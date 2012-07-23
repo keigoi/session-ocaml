@@ -214,7 +214,7 @@ let _ =
   let cnt = 100000 in
   let c = C.create () in
   for i=0 to cnt-1 do
-    C.send c (Random.bits ());
+    ignore (Thread.create (fun _ -> Thread.delay 0.001; C.send c (Random.bits ())) ());
     let v = C.peek c and w = C.receive c in
     assert (v = w)
   done;

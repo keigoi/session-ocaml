@@ -9,3 +9,6 @@ val swap : 'a t -> 'a -> 'a
 val try_take : 'a t -> 'a option
 val try_put : 'a t -> 'a -> bool
 val is_empty : 'a t -> bool
+val with_ : 'a t -> ('a -> 'b) -> 'b
+val modify_ : 'a t -> ('a -> 'a) -> unit
+val modify : 'a t -> ('a -> ('a * 'b)) -> 'b

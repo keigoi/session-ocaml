@@ -20,6 +20,7 @@ module Make :
       type 'a t
       type 'a wait = WaitMore | Return of 'a
       val create : 'a X.data -> 'a t
+      val signal : 'a t -> unit
       val wait : 'a t -> ('a X.state -> 'b wait) -> 'b
       val lock : 'a t -> ('a X.state -> 'b) -> 'b
       val try_lock : 'a t -> ('a X.state -> 'b) -> 'b -> 'b

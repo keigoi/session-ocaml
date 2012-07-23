@@ -12,10 +12,10 @@ type 'a t = 'a M.t
 let create () : 'a t = M.create (Queue.create ())
 
 let send (t : 'a t) (v:'a) : unit = 
-  M.lock t (fun q -> Q.add v !q)
+  M.lock t (fun q -> Q.add v !q; M.signal t)
 
 let send_all (t : 'a t) (xs:'a list) : unit =
-  M.lock t (fun q -> List.iter (fun x -> Q.add x !q) xs)
+  M.lock t (fun q -> List.iter (fun x -> Q.add x !q) xs; M.signal t)
 
 let try_receive (t:'a t) : 'a option = 
   M.lock t (fun q -> if Q.is_empty !q then None else Some (Q.take !q))
@@ -31,7 +31,7 @@ let clear_queue_ t =
   M.lock t (fun q -> 
     let old = !q in 
     q := Q.create (); 
-    old) 
+    old)
 
 let receive_all (t:'a t) (func:'b -> 'a -> 'b) (init:'b) : 'b =
   Q.fold func init (clear_queue_ t)

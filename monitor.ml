@@ -19,41 +19,42 @@ module Make = functor (X:Param) -> struct
   let wait (cell,m,c) (func: 'a X.state -> 'b wait) : 'b = 
     Mutex.lock m;
     let rec loop () =
-      try
+      begin try
         match func cell with
         | Return v -> v
         | WaitMore -> begin
             Condition.wait c m; 
             loop ()
           end
-      with e -> begin
+      with e ->
         Mutex.unlock m;
         raise e
       end
     in
     let v = loop () in
-    Condition.signal c;
     Mutex.unlock m;
     v
   
+  let signal (_,_,c) = Condition.signal c
+
   let lock (cell,m,_) (func: 'a X.state -> 'b) : 'b =
     Mutex.lock m;
-    try
+    begin try
       let v = func cell in
       Mutex.unlock m;
       v
-    with e -> begin
+    with e ->
       Mutex.unlock m;
       raise e
     end
   
   let try_lock (cell,m,_) (func: 'a X.state -> 'b) (iffail:'b) : 'b =
     if Mutex.try_lock m then begin
-      try
+      begin try
         let v = func cell in
         Mutex.unlock m;
         v
-      with e -> begin
+      with e ->
         Mutex.unlock m;
         raise e
       end
