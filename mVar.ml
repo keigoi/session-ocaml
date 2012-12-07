@@ -1,15 +1,10 @@
-module M = Monitor.Make (struct 
-    type 'a data = 'a option
-    type 'a state = 'a option ref 
-    let create v = ref v
-    let destruct c = !c
-  end)
+module M = Monitor
 
-type 'a t = 'a M.t
+type 'a t = 'a option ref M.t
 
-let create v = M.create (Some v)
+let create v = M.create (ref (Some v))
 
-let empty () = M.create None
+let empty () = M.create (ref None)
 
 let take (t:'a t) : 'a = 
   M.wait t (fun cell ->
@@ -66,7 +61,7 @@ let try_put (t:'a t) (v:'a) : bool =
         true)
     false
 
-let is_empty (t:'a t) = M.get t=None
+let is_empty (t:'a t) = !(M.get t)=None
 
 let with_ (t:'a t) (f:'a -> 'b) =
   M.wait t (fun cell ->

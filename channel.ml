@@ -1,15 +1,10 @@
 module Q = Queue
 
-module M = Monitor.Make (struct
-    type 'a data = 'a Q.t
-    type 'a state = 'a Q.t ref
-    let create q = ref q
-    let destruct q = !q
-  end)
+module M = Monitor
 
-type 'a t = 'a M.t
+type 'a t = ('a Q.t ref) M.t
 
-let create () : 'a t = M.create (Queue.create ())
+let create () : 'a t = M.create (ref (Q.create ()))
 
 let send (t : 'a t) (v:'a) : unit = 
   M.lock t (fun q -> Q.add v !q; M.signal t)
