@@ -1,7 +1,9 @@
 type ('a,'b,'t) tag = 
-    Tag_left : ('a,'b,'a) tag
+  | Tag_left : ('a,'b,'a) tag
   | Tag_right : ('a,'b,'b) tag
-type ('a,'b) either = Either : ('a,'b,'t) tag * 't -> ('a,'b) either
+type ('a,'b) either = 
+  | Left : 'a -> ('a,'b) either 
+  | Right : 'b -> ('a,'b) either
 
 module Session : sig
   type ('an,'bn,'a,'b) t
@@ -46,14 +48,11 @@ module Session : sig
   val send_right :
     (('k1,'k2) select, 'k2, 'p, 'q) t ->
     ('p,'q,unit) monad
-  type ('k1,'k2,'k,'p,'r) alt2 = 
-      Alt :
-          ((('k1,'k2) branch, 'k, 'p, 'q) t 
-           * (('k1,'k2,'k) tag -> ('q,'r,unit) monad)) -> ('k1,'k2,'k,'p,'r) alt2
-  type ('k1,'k2,'p,'r) alt = 
-      {alt: 'k. ('k1,'k2,'k,'p,'r) alt2}
-  val branch : ('k1,'k2,'p,'r) alt -> ('p,'r,unit) monad
-
+  val branch : 
+    (('k1,'k2) branch,empty, 'p,'q) t -> 
+    (empty,'k1, 'q,'q1) t * ('q1,'r,'a) monad ->
+    (empty,'k2, 'q,'q2) t * ('q2,'r,'a) monad ->
+    ('p,'r,'a) monad
   val fork : 
     ('a, empty, 'p, 'q) t -> 
     (('a, all_empty) cons, all_empty, unit) monad -> 
@@ -66,6 +65,7 @@ module Session : sig
   val b2a_chan : ('ka,'kb) chan -> (('s,'ka) recv_chan, ('s,'kb) send_chan) chan
   val a2b_branch : ('ka1,'kb1) chan -> ('ka2,'kb2) chan -> (('ka1,'ka2) select, ('kb1,'kb2) branch) chan
   val b2a_branch : ('ka1,'kb1) chan -> ('ka2,'kb2) chan -> (('ka1,'ka2) branch, ('kb1,'kb2) select) chan
+  val (!!) : ('ka,'kb) chan Lazy.t -> ('ka,'kb) chan
   val finish : (empty,empty) chan
 
   val new_chan : ('a,'b) chan -> ('p,('a,('b,'p)cons)cons, unit) monad
@@ -118,61 +118,79 @@ end
     set0 p ((get0 p).select Tag_left), ()
   let send_right (get0,set0) p =
     set0 p ((get0 p).select Tag_right), ()
+(*
   type ('k1,'k2,'k,'p,'r) alt2 = 
       Alt :
           ((('k1,'k2) branch, 'k, 'p, 'q) t 
            * (('k1,'k2,'k) tag -> ('q,'r,unit) monad)) -> ('k1,'k2,'k,'p,'r) alt2
   and ('k1,'k2,'p,'r) alt = 
       {alt: 'k. ('k1,'k2,'k,'p,'r) alt2}
-  let branch alt p = 
+  let branch_alt alt p = 
     let Alt((get,set),f) = alt.alt in
     let Either(tag,k) = get p () in
     f tag (set p k)
+*)
+  let branch (get0,set0) ((get1,set1),m1) ((get2,set2),m2) p =
+    let k,q = get0 p (), set0 p () in
+    match k with
+      | Left k1 -> m1 (set1 q k1)
+      | Right k2 -> m2 (set2 q k2)
   
   let fork (get,set) m p = 
     let a, q = get p, set p () in
     ignore (Thread.create (fun _ -> ignore (m (a,all_empty))) ());
     q, ()
 
-  type (_,_) dual =
-    | Dual : ('a -> 'b) -> ('a, 'b) dual
+  type ('a,'b) chan =  ('a * 'b) Lazy.t
 
-  type ('a,'b) chan = 'a * 'b
-  let a2b (ka,kb) = 
-    let c = Channel.create () in
-    (fun v -> Channel.send c v; ka), (fun () -> Channel.receive c, kb)
-  let b2a (ka,kb) =
-    let c = Channel.create () in
-    (fun () -> Channel.receive c, ka), (fun v -> Channel.send c v; kb)
-  let a2b_chan (ka,kb) = 
-    let c = Channel.create () in
-    (fun v -> Channel.send c v; ka), (fun () -> Channel.receive c, kb)
-  let b2a_chan (ka,kb) =
-    let c = Channel.create () in
-    (fun () -> Channel.receive c, ka), (fun v -> Channel.send c v; kb)
-  
-  type ('k1,'k2) tag_pack = Pack : ('k1,'k2,'k) tag -> ('k1,'k2) tag_pack
+  let fst_l (lazy (a,b)) = a
+  let snd_l (lazy (a,b)) = b
 
-  let a2b_branch : type ka1 ka2. (ka1*'kb1) -> (ka2*'kb2) -> (ka1,ka2) select * ('kb1,'kb2) branch  = fun (ka1,kb1) (ka2,kb2) ->
+  let a2b chan = lazy begin
+    let c = Channel.create () in
+    (fun v -> Channel.send c v; fst_l chan), (fun () -> Channel.receive c, snd_l chan)
+  end
+  let b2a chan = lazy begin
+    let c = Channel.create () in
+    (fun () -> Channel.receive c, fst_l chan), (fun v -> Channel.send c v; snd_l chan)
+  end
+  let a2b_chan chan = lazy begin
+    let c = Channel.create () in
+    (fun v -> Channel.send c v; fst_l chan), (fun () -> Channel.receive c, snd_l chan)
+  end
+  let b2a_chan chan = lazy begin
+    let c = Channel.create () in
+    (fun () -> Channel.receive c, fst_l chan), (fun v -> Channel.send c v; snd_l chan)
+  end
+  let a2b_branch : type ka1 ka2. 
+      (ka1*'kb1) Lazy.t -> 
+      (ka2*'kb2) Lazy.t -> 
+      ((ka1,ka2) select * ('kb1,'kb2) branch) Lazy.t = fun chan1 chan2 -> lazy begin
     let c = Channel.create () in
     let select : type t. (ka1,ka2,t) tag -> t = fun tag ->
       match tag with
-        | Tag_left -> Channel.send c (Either(Tag_left,kb1)); ka1
-        | Tag_right -> Channel.send c (Either(Tag_right,kb2)); ka2
+        | Tag_left -> Channel.send c (Left (snd_l chan1)); (fst_l chan1)
+        | Tag_right -> Channel.send c (Right (snd_l chan2)); (fst_l chan2)
     in
     {select}, (fun () -> Channel.receive c)
-
-  let b2a_branch : type kb1 kb2. ('ka1*kb1) -> ('ka2*kb2) -> ('ka1,'ka2) branch * (kb1,kb2) select  = fun (ka1,kb1) (ka2,kb2) ->
+  end
+  let b2a_branch : type kb1 kb2. 
+      ('ka1*kb1) Lazy.t -> 
+      ('ka2*kb2) Lazy.t -> 
+      (('ka1,'ka2) branch * (kb1,kb2) select) Lazy.t = fun chan1 chan2 -> lazy begin
     let c = Channel.create () in
     let select : type t. (kb1,kb2,t) tag -> t = fun tag ->
       match tag with
-        | Tag_left -> Channel.send c (Either(Tag_left,ka1)); kb1
-        | Tag_right -> Channel.send c (Either(Tag_right,ka2)); kb2
+        | Tag_left -> Channel.send c (Left (fst_l chan1)); (snd_l chan1)
+        | Tag_right -> Channel.send c (Right (fst_l chan2)); (snd_l chan2)
     in
     (fun () -> Channel.receive c), {select}
+  end
 
-  let finish = () , ()
-  let new_chan (a,b) p = (a,(b,p)), ()
+  let (!!) chan = lazy (Lazy.force (Lazy.force chan))
+
+  let finish = lazy (() , ())
+  let new_chan (lazy (a,b)) p = (a,(b,p)), ()
 end;;
 
 include Session;;
@@ -247,30 +265,26 @@ val r2 : unit -> ('a, (empty, (empty, 'a) cons) cons, unit) monad
 
 let _ = run (r2())
 
-let p3 n =
+let rec p3 n =
     if n>10 then 
       send_right c0 >> ret () 
     else
       send_left c0 >>
         send c0 n >>
         recv c0 >>= wrap print_endline >>
-        ret ()
+        p3 (n+1)
 
-let alt (type a) (type u) =
-  Alt((c0:(((int, (string, a) send) recv,a)branch,u,(((int, (string, a) send) recv,a)branch,'t)cons,(u,'t)cons)t),fun (tag:((int, (string, a) send) recv,a,u) tag) ->
-    match tag with
-    | Tag_right -> (ret ():((a, 't) cons, (a, 't) cons, unit) monad)
-    | Tag_left ->
-        recv c0 >>= fun x ->
-        send c0 (string_of_int (x+1)) >>
-          ret ())
-
-let q3 () = branch {alt=alt}
+let rec q3 () = 
+  branch c0
+    (c0,recv c0 >>= fun x ->
+        send c0 (string_of_int x) >>
+        q3 ())
+    (c0,ret ())
 
 let r3 () =
-  new_chan (a2b_branch (a2b (b2a finish)) finish) >>
+  new_chan (let rec r = lazy (a2b_branch (a2b (b2a (!! r))) finish) in !! r) >>= fun _ ->
   fork c1 (q3 ()) >>
-  p3 3
+  p3 1
 
 let _ = run (r3 ())
 
