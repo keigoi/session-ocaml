@@ -1,5 +1,5 @@
-OCAMLC=ocamlfind ocamlc -thread -package unix,threads
-OCAMLOPT=ocamlfind ocamlopt -thread -package unix,threads
+OCAMLC=ocamlfind ocamlc -rectypes -thread -package unix,threads
+OCAMLOPT=ocamlfind ocamlopt -rectypes -thread -package unix,threads
 OCAMLDEP=ocamlfind ocamldep
 INCLUDES=                 # all relevant -I options here
 OCAMLFLAGS=$(INCLUDES)    # add other options for ocamlc here
@@ -30,7 +30,7 @@ test.byte: $(BYTE_OBJS) $(CMI)
 # Clean up
 clean:
 	rm -f test.byte test.native
-	rm -f *.cm[iox]
+	rm -f *.cm[iox] *.o
 
 # Dependencies
 depend:
