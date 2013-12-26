@@ -6,7 +6,7 @@ module Session : sig
   type ('an,'bn,'a,'b) t
   type (+'hd, +'tl) cons
   type empty
-  type all_empty = (empty, all_empty) cons
+  type all_empty = (empty, 'a) cons as 'a
 
   val c0 : ('a0, 'b0, ('a0,'a) cons, ('b0,'a) cons) t
   val c1 : ('a1, 'b1, ('a0,('a1,'a) cons) cons, ('a0,('b1,'a) cons) cons) t
