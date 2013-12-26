@@ -1,4 +1,7 @@
-*.cm[iox]
+*.cm[ioxat]
+*.cmxa
+*.cmti
 *.o
+*.annot
 test.*
 

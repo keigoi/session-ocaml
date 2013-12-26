@@ -9,6 +9,8 @@ CMI=monitor.cmi mVar.cmi channel.cmi
 BYTE_OBJS=monitor.cmo mVar.cmo channel.cmo session.cmo
 NATIVE_OBJS=$(BYTE_OBJS:%.cmo=%.cmx)
 
+all: test.byte
+
 test.native: $(NATIVE_OBJS) $(CMI)
 	$(OCAMLOPT) -linkpkg -o test.native $(OCAMLFLAGS) $(NATIVE_OBJS)
 
@@ -30,7 +32,7 @@ test.byte: $(BYTE_OBJS) $(CMI)
 # Clean up
 clean:
 	rm -f test.byte test.native
-	rm -f *.cm[iox] *.o
+	rm -f *.cm[ioaxt] *.cmax *.cmti *.o *.annot
 
 # Dependencies
 depend:
