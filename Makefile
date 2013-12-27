@@ -1,5 +1,6 @@
 OCAMLC=ocamlfind ocamlc -rectypes -thread -package unix,threads
 OCAMLOPT=ocamlfind ocamlopt -rectypes -thread -package unix,threads
+OCAMLMKTOP=ocamlfind ocamlmktop -rectypes -thread -package unix,threads
 OCAMLDEP=ocamlfind ocamldep
 INCLUDES=                 # all relevant -I options here
 OCAMLFLAGS=$(INCLUDES)    # add other options for ocamlc here
@@ -16,6 +17,10 @@ test.native: $(NATIVE_OBJS) $(CMI)
 
 test.byte: $(BYTE_OBJS) $(CMI)
 	$(OCAMLC) -linkpkg -o test.byte $(OCAMLFLAGS) $(BYTE_OBJS)
+
+test.top: $(BYTE_OBJS) $(CMI)
+	$(OCAMLMKTOP) -linkpkg -o test.top $(OCAMLFLAGS) $(BYTE_OBJS)
+
 
 # Common rules
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
