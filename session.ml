@@ -17,21 +17,23 @@ module Session : sig
   type ('p,'q,'a) monad
   val ret : 'a -> ('p, 'p, 'a) monad
   val (>>=) : ('p,'q,'a) monad -> ('a -> ('q,'r,'b) monad) -> ('p,'r,'b) monad
-  val (>>) : ('p,'q,unit) monad -> ('q,'r,'b) monad -> ('p,'r,'b) monad
+  val (>>) : ('p,'q,'a) monad -> ('q,'r,'b) monad -> ('p,'r,'b) monad
   val fmap : ('a -> 'b) -> 'a -> ('p,'p,'b) monad
   val slide : ('p,'q,'a) monad -> (('p0,'p)cons,('p0,'q)cons,'a) monad
 
   val run : (all_empty,all_empty,'a) monad -> 'a
 
-  type ('a,'k) send
-  type ('a,'k) recv
-  type ('s,'k) send_chan
-  type ('s,'k) recv_chan
-  type ('k1,'k2) select
-  type ('k1,'k2) branch
+  type ('s, 'v, 'k) shot
+  type finish
+  type ('s, 't, 'k) chan
 
-  val send : (('a,'k)send, 'k, 'p, 'q) t -> 'a -> ('p,'q,unit) monad
-  val recv : (('a,'k)recv, 'k, 'p, 'q) t -> ('p,'q,'a) monad
+  type pos and neg
+                    
+  val send : (('s,'t,('s,'a,'k)shot)chan , ('s,'t,'k) chan, 'p, 'q) t -> 'a -> ('p,'q,unit) monad
+  val recv : (('s,'t,('t,'a,'k)shot)chan , ('s,'t,'k) chan, 'p, 'q) t -> ('p,'q,'a) monad
+  val close : (('s,'t,finish)chan, empty, 'p, 'q) t -> ('p, 'q, unit) monad
+
+(*
   val send_chan : 
     (('s,'k) send_chan, 'k, 'q, 'r) t -> 
     ('s, empty, 'p, 'q) t ->
@@ -51,22 +53,13 @@ module Session : sig
     (empty,'k1, 'q,'q1) t * ('q1,'r,'a) monad ->
     (empty,'k2, 'q,'q2) t * ('q2,'r,'a) monad ->
     ('p,'r,'a) monad
+ *)
   val fork : 
     ('a, empty, 'p, 'q) t -> 
     (('a, all_empty) cons, all_empty, unit) monad -> 
     ('p,'q,unit) monad
 
-  type ('a,'b) chan
-  val a2b : ('ka,'kb) chan -> (('v,'ka) send, ('v,'kb) recv) chan
-  val b2a : ('ka,'kb) chan -> (('v,'ka) recv, ('v,'kb) send) chan
-  val a2b_chan : ('ka,'kb) chan -> (('s,'ka) send_chan, ('s,'kb) recv_chan) chan
-  val b2a_chan : ('ka,'kb) chan -> (('s,'ka) recv_chan, ('s,'kb) send_chan) chan
-  val a2b_branch : ('ka1,'kb1) chan -> ('ka2,'kb2) chan -> (('ka1,'ka2) select, ('kb1,'kb2) branch) chan
-  val b2a_branch : ('ka1,'kb1) chan -> ('ka2,'kb2) chan -> (('ka1,'ka2) branch, ('kb1,'kb2) select) chan
-  val (!!) : ('ka,'kb) chan Lazy.t -> ('ka,'kb) chan
-  val finish : (empty,empty) chan
-
-  val new_chan : (empty,'a,'p,'q) t -> (empty,'b,'q,'r) t -> ('a,'b) chan -> ('p,'r, unit) monad
+  val new_chan : (empty,(pos,neg,'k)chan,'p,'q) t -> (empty,(neg,pos,'k)chan,'q,'r) t -> ('p,'r, unit) monad
 
 end 
 = struct
@@ -91,6 +84,15 @@ end
   let rec all_empty = Empty, all_empty
   let run m = snd (m all_empty)
 
+  type pos = Pos and neg = Neg
+
+  type ('s,'v,'k) shot = Shot of 's * 'v * 'k Channel.t
+  type finish = unit
+
+  type ('s,'t,'k) chan = Chan of 's * 't * 'k Channel.t
+
+
+(*
   type ('a,'b,'t) tag = 
     | Tag_left : ('a,'b,'a) tag
     | Tag_right : ('a,'b,'b) tag
@@ -101,11 +103,22 @@ end
   type ('s, 'k) recv_chan = unit -> 's * 'k
   type ('k1, 'k2) select = {select:'k. ('k1,'k2,'k) tag -> 'k}
   type ('k1, 'k2) branch = unit -> ('k1,'k2) either
+ *)
 
-  let send (get,set) v p = set p (get p v), ()
-  let recv (get,set) p =
-    let a, k = get p () in
-    set p k, a
+  let send (type x) (type y) ((get,set) : ((x,y,(x,'a,'k)shot)chan, (x,y,'k) chan, 'p, 'q) t) v p =
+    let Chan(s,t,c) = get p in
+    let c' = Channel.create () in
+    Channel.send c (Shot(s,v,c'));
+    set p (Chan(s,t,c')), ()
+                                     
+  let recv (type x) (type y) ((get,set) : ((x,y,(y,'a,'k)shot)chan, (x,y,'k) chan, 'p, 'q) t) p =
+    let Chan(s,t,c) = get p in
+    let Shot(t, v, c') = Channel.receive c in
+    set p (Chan(s,t,c')), v
+
+  let close (type x) (type y) ((get,set) : ((x,y,finish)chan, empty, 'p, 'q) t) p =
+    set p Empty, ()
+(*               
   let send_chan (get0,set0) (get1,set1) p = 
     let s, q = get1 p, set1 p Empty in
     let r = set0 q (get0 q s) in
@@ -125,61 +138,17 @@ end
       | Left k1 -> m1 (set1 q k1)
       | Right k2 -> m2 (set2 q k2)
   
+ *)
   let fork (get,set) m p = 
     let a, q = get p, set p Empty in
     ignore (Thread.create (fun _ -> ignore (m (a,all_empty))) ());
     q, ()
-
-  type ('a,'b) chan =  ('a * 'b) Lazy.t
-
-  let fst_l (lazy (a,b)) = a
-  let snd_l (lazy (a,b)) = b
-
-  let a2b chan = lazy begin
-    let c = Channel.create () in
-    (fun v -> Channel.send c v; fst_l chan), (fun () -> Channel.receive c, snd_l chan)
-  end
-  let b2a chan = lazy begin
-    let c = Channel.create () in
-    (fun () -> Channel.receive c, fst_l chan), (fun v -> Channel.send c v; snd_l chan)
-  end
-  let a2b_chan chan = lazy begin
-    let c = Channel.create () in
-    (fun v -> Channel.send c v; fst_l chan), (fun () -> Channel.receive c, snd_l chan)
-  end
-  let b2a_chan chan = lazy begin
-    let c = Channel.create () in
-    (fun () -> Channel.receive c, fst_l chan), (fun v -> Channel.send c v; snd_l chan)
-  end
-  let a2b_branch : type ka1 ka2. 
-      (ka1*'kb1) Lazy.t -> 
-      (ka2*'kb2) Lazy.t -> 
-      ((ka1,ka2) select * ('kb1,'kb2) branch) Lazy.t = fun chan1 chan2 -> lazy begin
-    let c = Channel.create () in
-    let select : type t. (ka1,ka2,t) tag -> t = fun tag ->
-      match tag with
-        | Tag_left -> Channel.send c (Left (snd_l chan1)); (fst_l chan1)
-        | Tag_right -> Channel.send c (Right (snd_l chan2)); (fst_l chan2)
+               
+  let new_chan ((get0,set0):(empty,(pos,neg,'k)chan,'p,'q) t)
+               ((get1,set1):(empty,(neg,pos,'k)chan,'q,'r) t) p =
+    let chan = Channel.create ()
     in
-    {select}, (fun () -> Channel.receive c)
-  end
-  let b2a_branch : type kb1 kb2. 
-      ('ka1*kb1) Lazy.t -> 
-      ('ka2*kb2) Lazy.t -> 
-      (('ka1,'ka2) branch * (kb1,kb2) select) Lazy.t = fun chan1 chan2 -> lazy begin
-    let c = Channel.create () in
-    let select : type t. (kb1,kb2,t) tag -> t = fun tag ->
-      match tag with
-        | Tag_left -> Channel.send c (Left (fst_l chan1)); (snd_l chan1)
-        | Tag_right -> Channel.send c (Right (fst_l chan2)); (snd_l chan2)
-    in
-    (fun () -> Channel.receive c), {select}
-  end
-
-  let (!!) chan = lazy (Lazy.force (Lazy.force chan))
-
-  let finish = lazy (Empty , Empty)
-  let new_chan (get0,set0) (get1,set1) (lazy (a,b)) p = set1 (set0 p a) b, ()
+    set1 (set0 p (Chan(Pos,Neg,chan))) (Chan(Neg,Pos,chan)), ()
 end;;
 
 include Session;;
@@ -188,7 +157,16 @@ let p () =
   send c0 1234 >>
   recv c0 >>= 
   fmap print_endline >>
+  close c0 >>
   ret ()
+      
+      (*
+val p :
+    unit ->
+      ((('a, 'b, ('a, int, ('b, string, finish) shot) shot) chan, 'c) cons,
+          (empty, 'c) cons, unit)
+          monad = <fun>
+       *)
 (*
 val p :
   unit ->
@@ -198,59 +176,45 @@ val p :
 let q () =
   recv c0 >>= fun i ->
   send c0 (string_of_int (i*2)) >>
+  close c0 >>
   ret ()
 (*
 val q :
-  unit ->
-  (((int, (string, 'a) send) recv, 'b) cons, ('a, 'b) cons, unit) monad
+    unit ->
+      ((('a, 'b, ('b, int, ('a, string, finish) shot) shot) chan, 'c) cons,
+          (empty, 'c) cons, unit)
+          monad
 *)
 
 let r () = 
-  new_chan c0 c1 (a2b (b2a finish)) >>
-  new_chan c2 c3 finish >>
+  new_chan c0 c1 >>
   fork c1 (q ()) >>
   p ()
 (*
 val r :
-  unit ->
-  ('a, (empty, (empty, (empty, (empty, 'a) cons) cons) cons) cons, unit)
-  monad
+    unit ->
+      ((empty, (empty, 'a) cons) cons, (empty, (empty, 'a) cons) cons, unit)
+          monad
 *)
 
 let _ = run (r())
 
+(*
 let p2 () = 
   send c0 7777 >>
   recv_chan c0 c1 >>
   recv c1 >>= fmap print_endline
-(*
-val p2 :
-  unit ->
-  (((int, ((string, 'a) recv, 'b) recv_chan) send, (empty, 'c) cons) cons,
-   ('b, ('a, 'c) cons) cons, unit)
-  monad
-*)
 
 let q2 () =
   recv c0 >>= fun v ->
   new_chan c1 c2 (a2b finish) >>
   send_chan c0 c2 >>
   send c1 (string_of_int (v - 1111))
-(*
-val q2 :
-  unit ->
-  (((int, ((string, empty) recv, 'a) send_chan) recv, 'b) cons,
-   (empty, (empty, ('a, 'b) cons) cons) cons, unit)
-  monad
-*)
 
 let r2 () =
   new_chan c0 c1 (a2b (b2a_chan finish)) >>
   fork c1 (q2 ()) >>
   p2 ()
-(*
-val r2 : unit -> ('a, (empty, (empty, 'a) cons) cons, unit) monad
-*)
 
 let _ = run (r2())
 
@@ -276,5 +240,6 @@ let r3 () =
   p3 1
 
 let _ = run (r3 ())
+ *)
 
 (* let v () = branch {alt=Alt(c0,fun _ -> failwith "")} *)
