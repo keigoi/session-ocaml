@@ -3,16 +3,16 @@ type ('a,'b) either =
   | Right : 'b -> ('a,'b) either
 
 module Session : sig
-  type ('an,'bn,'a,'b) t
+  type ('an,'bn,'a,'b) idx
   type (+'hd, +'tl) cons
   type empty
   type all_empty = (empty, 'a) cons as 'a
 
-  val c0 : ('a0, 'b0, ('a0,'a) cons, ('b0,'a) cons) t
-  val c1 : ('a1, 'b1, ('a0,('a1,'a) cons) cons, ('a0,('b1,'a) cons) cons) t
-  val c2 : ('a2, 'b2, ('a0,('a1,('a2,'a) cons) cons) cons, ('a0,('a1,('b2,'a) cons) cons) cons) t
-  val c3 : ('a3, 'b3, ('a0,('a1,('a2,('a3,'a) cons) cons) cons) cons, ('a0,('a1,('a2,('b3,'a) cons) cons) cons) cons) t
-  val succ : ('an, 'bn, 'a, 'b) t -> ('an, 'bn, ('a0,'a) cons, ('a0,'b) cons) t
+  val c0 : ('a0, 'b0, ('a0,'a) cons, ('b0,'a) cons) idx
+  val c1 : ('a1, 'b1, ('a0,('a1,'a) cons) cons, ('a0,('b1,'a) cons) cons) idx
+  val c2 : ('a2, 'b2, ('a0,('a1,('a2,'a) cons) cons) cons, ('a0,('a1,('b2,'a) cons) cons) cons) idx
+  val c3 : ('a3, 'b3, ('a0,('a1,('a2,('a3,'a) cons) cons) cons) cons, ('a0,('a1,('a2,('b3,'a) cons) cons) cons) cons) idx
+  val succ : ('an, 'bn, 'a, 'b) idx -> ('an, 'bn, ('a0,'a) cons, ('a0,'b) cons) idx
 
   type ('p,'q,'a) monad
   val ret : 'a -> ('p, 'p, 'a) monad
@@ -25,13 +25,14 @@ module Session : sig
 
   type ('s, 'v, 'k) shot
   type finish
-  type ('s, 't, 'k) chan
-
+         
   type pos and neg
+
+  type ('s, 't, 'k) channel
                     
-  val send : (('s,'t,('s,'a,'k)shot)chan , ('s,'t,'k) chan, 'p, 'q) t -> 'a -> ('p,'q,unit) monad
-  val recv : (('s,'t,('t,'a,'k)shot)chan , ('s,'t,'k) chan, 'p, 'q) t -> ('p,'q,'a) monad
-  val close : (('s,'t,finish)chan, empty, 'p, 'q) t -> ('p, 'q, unit) monad
+  val send : (('s,'t,('s,'a,'k)shot)channel , ('s,'t,'k) channel, 'p, 'q) idx -> 'a -> ('p,'q,unit) monad
+  val recv : (('s,'t,('t,'a,'k)shot)channel, ('s,'t,'k) channel, 'p, 'q) idx -> ('p,'q,'a) monad
+  val close : (('s,'t,finish)channel, empty, 'p, 'q) idx -> ('p, 'q, unit) monad
 
 (*
   val send_chan : 
@@ -55,15 +56,15 @@ module Session : sig
     ('p,'r,'a) monad
  *)
   val fork : 
-    ('a, empty, 'p, 'q) t -> 
+    ('a, empty, 'p, 'q) idx -> 
     (('a, all_empty) cons, all_empty, unit) monad -> 
     ('p,'q,unit) monad
 
-  val new_chan : (empty,(pos,neg,'k)chan,'p,'q) t -> (empty,(neg,pos,'k)chan,'q,'r) t -> ('p,'r, unit) monad
+  val new_chan : (empty,(pos,neg,'k)channel,'p,'q) idx -> (empty,(neg,pos,'k)channel,'q,'r) idx -> ('p,'r, unit) monad
 
 end 
 = struct
-  type ('a,'b,'p,'q) t = ('p -> 'a) * ('p -> 'b -> 'q)
+  type ('a,'b,'p,'q) idx = ('p -> 'a) * ('p -> 'b -> 'q)
   type ('hd, 'tl) cons = 'hd * 'tl
   type empty = Empty
   type all_empty = empty * all_empty
@@ -89,8 +90,7 @@ end
   type ('s,'v,'k) shot = Shot of 's * 'v * 'k Channel.t
   type finish = unit
 
-  type ('s,'t,'k) chan = Chan of 's * 't * 'k Channel.t
-
+  type ('s,'t,'k) channel = Chan of 's * 't * 'k Channel.t
 
 (*
   type ('a,'b,'t) tag = 
@@ -105,18 +105,18 @@ end
   type ('k1, 'k2) branch = unit -> ('k1,'k2) either
  *)
 
-  let send (type x) (type y) ((get,set) : ((x,y,(x,'a,'k)shot)chan, (x,y,'k) chan, 'p, 'q) t) v p =
+  let send (get,set) v p =
     let Chan(s,t,c) = get p in
     let c' = Channel.create () in
     Channel.send c (Shot(s,v,c'));
     set p (Chan(s,t,c')), ()
                                      
-  let recv (type x) (type y) ((get,set) : ((x,y,(y,'a,'k)shot)chan, (x,y,'k) chan, 'p, 'q) t) p =
+  let recv (get,set) p =
     let Chan(s,t,c) = get p in
     let Shot(t, v, c') = Channel.receive c in
     set p (Chan(s,t,c')), v
 
-  let close (type x) (type y) ((get,set) : ((x,y,finish)chan, empty, 'p, 'q) t) p =
+  let close (get,set) p =
     set p Empty, ()
 (*               
   let send_chan (get0,set0) (get1,set1) p = 
@@ -144,8 +144,7 @@ end
     ignore (Thread.create (fun _ -> ignore (m (a,all_empty))) ());
     q, ()
                
-  let new_chan ((get0,set0):(empty,(pos,neg,'k)chan,'p,'q) t)
-               ((get1,set1):(empty,(neg,pos,'k)chan,'q,'r) t) p =
+  let new_chan (get0,set0) (get1,set1) p =
     let chan = Channel.create ()
     in
     set1 (set0 p (Chan(Pos,Neg,chan))) (Chan(Neg,Pos,chan)), ()
