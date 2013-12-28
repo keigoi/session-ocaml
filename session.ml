@@ -8,10 +8,10 @@ module Session : sig
   type empty
   type all_empty = (empty, 'a) cons as 'a
 
-  val c0 : ('a0, 'b0, ('a0,'a) cons, ('b0,'a) cons) idx
-  val c1 : ('a1, 'b1, ('a0,('a1,'a) cons) cons, ('a0,('b1,'a) cons) cons) idx
-  val c2 : ('a2, 'b2, ('a0,('a1,('a2,'a) cons) cons) cons, ('a0,('a1,('b2,'a) cons) cons) cons) idx
-  val c3 : ('a3, 'b3, ('a0,('a1,('a2,('a3,'a) cons) cons) cons) cons, ('a0,('a1,('a2,('b3,'a) cons) cons) cons) cons) idx
+  val _0 : ('a0, 'b0, ('a0,'a) cons, ('b0,'a) cons) idx
+  val _1 : ('a1, 'b1, ('a0,('a1,'a) cons) cons, ('a0,('b1,'a) cons) cons) idx
+  val _2 : ('a2, 'b2, ('a0,('a1,('a2,'a) cons) cons) cons, ('a0,('a1,('b2,'a) cons) cons) cons) idx
+  val _3 : ('a3, 'b3, ('a0,('a1,('a2,('a3,'a) cons) cons) cons) cons, ('a0,('a1,('a2,('b3,'a) cons) cons) cons) cons) idx
   val succ : ('an, 'bn, 'a, 'b) idx -> ('an, 'bn, ('a0,'a) cons, ('a0,'b) cons) idx
 
   type ('p,'q,'a) monad
@@ -67,10 +67,10 @@ end
   type empty = Empty
   type all_empty = empty * all_empty
 
-  let c0 = (fun (a0,_) -> a0), (fun (_,a) b0 -> (b0,a))
-  let c1 = (fun (_,(a1,_)) -> a1), (fun (a0,(_,a)) b1 -> (a0,(b1,a)))
-  let c2 = (fun (_,(_,(a2,_))) -> a2), (fun (a0,(a1,(_,a))) b2 -> (a0,(a1,(b2,a))))
-  let c3 = (fun (_,(_,(_,(a3,_)))) -> a3), (fun (a0,(a1,(a2,(_,a)))) b3 -> (a0,(a1,(a2,(b3,a)))))
+  let _0 = (fun (a0,_) -> a0), (fun (_,a) b0 -> (b0,a))
+  let _1 = (fun (_,(a1,_)) -> a1), (fun (a0,(_,a)) b1 -> (a0,(b1,a)))
+  let _2 = (fun (_,(_,(a2,_))) -> a2), (fun (a0,(a1,(_,a))) b2 -> (a0,(a1,(b2,a))))
+  let _3 = (fun (_,(_,(_,(a3,_)))) -> a3), (fun (a0,(a1,(a2,(_,a)))) b3 -> (a0,(a1,(a2,(b3,a)))))
   let succ (get,set) = (fun (_,a) -> get a), (fun (a0,a) bn -> (a0,set a bn))
 
   type ('p,'q,'a) monad = 'p -> 'q * 'a
@@ -147,10 +147,10 @@ end;;
 include Session;;
 
 let p () = 
-  send c0 1234 >>
-  recv c0 >>= 
+  send _0 1234 >>
+  recv _0 >>= 
   fmap print_endline >>
-  close c0 >>
+  close _0 >>
   ret ()
       
       (*
@@ -167,9 +167,9 @@ val p :
 *)
 
 let q () =
-  recv c0 >>= fun i ->
-  send c0 (string_of_int (i*2)) >>
-  close c0 >>
+  recv _0 >>= fun i ->
+  send _0 (string_of_int (i*2)) >>
+  close _0 >>
   ret ()
 (*
 val q :
@@ -180,7 +180,7 @@ val q :
 *)
 
 let r () = 
-  fork c0 (q ()) >>
+  fork _0 (q ()) >>
   p ()
 (*
 val r :
@@ -193,45 +193,45 @@ let _ = run (r())
 
 (*
 let p2 () = 
-  send c0 7777 >>
-  recv_chan c0 c1 >>
-  recv c1 >>= fmap print_endline
+  send _0 7777 >>
+  recv_chan _0 _1 >>
+  recv _1 >>= fmap print_endline
 
 let q2 () =
-  recv c0 >>= fun v ->
-  new_chan c1 c2 (a2b finish) >>
-  send_chan c0 c2 >>
-  send c1 (string_of_int (v - 1111))
+  recv _0 >>= fun v ->
+  new_chan _1 _2 (a2b finish) >>
+  send_chan _0 _2 >>
+  send _1 (string_of_int (v - 1111))
 
 let r2 () =
-  new_chan c0 c1 (a2b (b2a_chan finish)) >>
-  fork c1 (q2 ()) >>
+  new_chan _0 _1 (a2b (b2a_chan finish)) >>
+  fork _1 (q2 ()) >>
   p2 ()
 
 let _ = run (r2())
 
 let rec p3 n =
     if n>10 then 
-      send_right c0 >> ret () 
+      send_right _0 >> ret () 
     else
-      send_left c0 >>
-        send c0 n >>
-        recv c0 >>= fmap print_endline >>
+      send_left _0 >>
+        send _0 n >>
+        recv _0 >>= fmap print_endline >>
         p3 (n+1)
 
 let rec q3 () = 
-  branch c0
-    (c0,recv c0 >>= fun x ->
-        send c0 (string_of_int x) >>
+  branch _0
+    (_0,recv _0 >>= fun x ->
+        send _0 (string_of_int x) >>
         q3 ())
-    (c0,ret ())
+    (_0,ret ())
 
 let r3 () =
-  new_chan c0 c1 (let rec r = lazy (a2b_branch (a2b (b2a (!! r))) finish) in !!r) >>= fun _ ->
-  fork c1 (q3 ()) >>
+  new_chan _0 _1 (let rec r = lazy (a2b_branch (a2b (b2a (!! r))) finish) in !!r) >>= fun _ ->
+  fork _1 (q3 ()) >>
   p3 1
 
 let _ = run (r3 ())
  *)
 
-(* let v () = branch {alt=Alt(c0,fun _ -> failwith "")} *)
+(* let v () = branch {alt=Alt(_0,fun _ -> failwith "")} *)
