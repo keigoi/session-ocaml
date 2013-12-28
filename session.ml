@@ -25,6 +25,7 @@ module Session : sig
 
   type ('s, 'v, 'k) shot
   type ('s, 'c, 'k) pass
+  type ('s, 'k1, 'k2) branch
   type finish
          
   type pos and neg
@@ -60,19 +61,18 @@ module Session : sig
     (empty,(pos,neg,'kk)channel, 'q, 'r) idx ->
     ('p,'r,unit) monad
                  
-(*
-  val send_left :
-    (('k1,'k2) select, 'k1, 'p, 'q) t ->
+  val select_left :
+    (('s,'t,('s,'k1,'k2)branch)channel, ('s,'t,'k1)channel, 'p, 'q) idx ->
     ('p,'q,unit) monad
-  val send_right :
-    (('k1,'k2) select, 'k2, 'p, 'q) t ->
+  val select_right :
+    (('s,'t,('s,'k1,'k2)branch)channel, ('s,'t,'k2)channel, 'p, 'q) idx ->
     ('p,'q,unit) monad
   val branch : 
-    (('k1,'k2) branch,empty, 'p,'q) t -> 
-    (empty,'k1, 'q,'q1) t * ('q1,'r,'a) monad ->
-    (empty,'k2, 'q,'q2) t * ('q2,'r,'a) monad ->
+    (('s,'t,('t,'k1,'k2)branch)channel, empty, 'p, 'q) idx ->
+    (empty,('s,'t,'k1)channel, 'q,'q1) idx * ('q1,'r,'a) monad ->
+    (empty,('s,'t,'k2)channel, 'q,'q2) idx * ('q2,'r,'a) monad ->
     ('p,'r,'a) monad
- *)
+
   val fork : 
     (empty, (pos,neg,'k)channel, 'p, 'q) idx -> 
     (((neg,pos,'k)channel, all_empty) cons, all_empty, unit) monad -> 
@@ -105,6 +105,7 @@ end
 
   type ('s,'v,'k) shot = Shot of 's * 'v * 'k Channel.t
   type ('s,'c,'k) pass = Pass of 's * 'c * 'k Channel.t
+  type ('s,'k1,'k2) branch = BranchLeft of 's * 'k1 Channel.t | BranchRight of 's * 'k2 Channel.t
   type finish = unit
 
   type ('s,'t,'k) channel = Chan of 's * 't * 'k Channel.t
@@ -149,19 +150,30 @@ end
     let e = Pass(s,Chan(Neg,Pos,cc),c') in
     Channel.send c e;
     set1 (set0 p (Chan(s,t,c'))) (Chan(Pos,Neg,cc)), ()
-    
-(*               
-  let send_left (get0,set0) p =
-    set0 p ((get0 p).select Tag_left), ()
-  let send_right (get0,set0) p =
-    set0 p ((get0 p).select Tag_right), ()
-  let branch (get0,set0) ((get1,set1),m1) ((get2,set2),m2) p =
-    let k,q = get0 p (), set0 p Empty in
-    match k with
-      | Left k1 -> m1 (set1 q k1)
-      | Right k2 -> m2 (set2 q k2)
-  
- *)
+
+  let select_left (get,set) p =
+    let Chan(s,t,c) = get p in
+    let c' = Channel.create () in
+    Channel.send c (BranchLeft(s,c'));
+    set p (Chan(s,t,c')), ()
+                         
+  let select_right (get,set) p =
+    let Chan(s,t,c) = get p in
+    let c' = Channel.create () in
+    Channel.send c (BranchRight(s,c'));
+    set p (Chan(s,t,c')), ()
+
+  let branch :
+    (('s,'t,('t,'k1,'k2)branch)channel, empty, 'p, 'q) idx ->
+    (empty,('s,'t,'k1)channel, 'q,'q1) idx * ('q1,'r,'a) monad ->
+    (empty,('s,'t,'k2)channel, 'q,'q2) idx * ('q2,'r,'a) monad ->
+    ('p,'r,'a) monad = fun (get0,set0) ((get1,set1),m1) ((get2,set2),m2) p ->
+    let Chan(s,t,c), q = get0 p, set0 p Empty in
+    match Channel.receive c with
+    | BranchLeft(_,c') -> m1 (set1 q (Chan(s,t,c')))
+    | BranchRight(_,c') -> m2 (set2 q (Chan(s,t,c')))
+
+
   let fork (get,set) m p = 
     let chan = Channel.create () in
     ignore (Thread.create (fun _ -> ignore (m (Chan(Neg,Pos,chan),all_empty))) ());
@@ -237,12 +249,11 @@ let r2 () =
 
 let _ = run (r2())
 
-            (*
 let rec p3 n =
     if n>10 then 
-      send_right _0 >> ret () 
+      select_right _0 >> close _0
     else
-      send_left _0 >>
+      select_left _0 >>
         send _0 n >>
         recv _0 >>= fmap print_endline >>
         p3 (n+1)
@@ -252,14 +263,12 @@ let rec q3 () =
     (_0,recv _0 >>= fun x ->
         send _0 (string_of_int x) >>
         q3 ())
-    (_0,ret ())
+    (_0,close _0)
 
 let r3 () =
-  new_chan _0 _1 (let rec r = lazy (a2b_branch (a2b (b2a (!! r))) finish) in !!r) >>= fun _ ->
-  fork _1 (q3 ()) >>
+  fork _0 (q3 ()) >>
   p3 1
 
 let _ = run (r3 ())
- *)
 
 (* let v () = branch {alt=Alt(_0,fun _ -> failwith "")} *)
