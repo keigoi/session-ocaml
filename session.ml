@@ -56,11 +56,9 @@ module Session : sig
     ('p,'r,'a) monad
  *)
   val fork : 
-    ('a, empty, 'p, 'q) idx -> 
-    (('a, all_empty) cons, all_empty, unit) monad -> 
+    (empty, (pos,neg,'k)channel, 'p, 'q) idx -> 
+    (((neg,pos,'k)channel, all_empty) cons, all_empty, unit) monad -> 
     ('p,'q,unit) monad
-
-  val new_chan : (empty,(pos,neg,'k)channel,'p,'q) idx -> (empty,(neg,pos,'k)channel,'q,'r) idx -> ('p,'r, unit) monad
 
 end 
 = struct
@@ -140,14 +138,10 @@ end
   
  *)
   let fork (get,set) m p = 
-    let a, q = get p, set p Empty in
-    ignore (Thread.create (fun _ -> ignore (m (a,all_empty))) ());
-    q, ()
-               
-  let new_chan (get0,set0) (get1,set1) p =
-    let chan = Channel.create ()
-    in
-    set1 (set0 p (Chan(Pos,Neg,chan))) (Chan(Neg,Pos,chan)), ()
+    let chan = Channel.create () in
+    ignore (Thread.create (fun _ -> ignore (m (Chan(Neg,Pos,chan),all_empty))) ());
+    set p (Chan(Pos,Neg,chan)), ()
+
 end;;
 
 include Session;;
@@ -186,8 +180,7 @@ val q :
 *)
 
 let r () = 
-  new_chan c0 c1 >>
-  fork c1 (q ()) >>
+  fork c0 (q ()) >>
   p ()
 (*
 val r :
