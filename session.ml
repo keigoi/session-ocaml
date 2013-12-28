@@ -24,6 +24,7 @@ module Session : sig
   val run : (all_empty,all_empty,'a) monad -> 'a
 
   type ('s, 'v, 'k) shot
+  type ('s, 'c, 'k) pass
   type finish
          
   type pos and neg
@@ -34,15 +35,32 @@ module Session : sig
   val recv : (('s,'t,('t,'a,'k)shot)channel, ('s,'t,'k) channel, 'p, 'q) idx -> ('p,'q,'a) monad
   val close : (('s,'t,finish)channel, empty, 'p, 'q) idx -> ('p, 'q, unit) monad
 
-(*
+  val send_slot : 
+    (('s,'t,('s,'c,'k) pass) channel, ('s,'t,'k) channel, 'q, 'r) idx -> 
+    ('c, empty, 'p, 'q) idx ->
+    ('p,'r,unit) monad
+
+  val recv_slot :
+    (('s,'t,('t,'c,'k) pass) channel, ('s,'t,'k) channel, 'p, 'q) idx -> 
+    (empty, 'c, 'q, 'r) idx ->
+    ('p,'r,unit) monad
+
   val send_chan : 
-    (('s,'k) send_chan, 'k, 'q, 'r) t -> 
-    ('s, empty, 'p, 'q) t ->
+    (('s,'t,('s,('ss,'tt,'kk)channel,'k) pass) channel, ('s,'t,'k) channel, 'q, 'r) idx -> 
+    (('ss,'tt,'kk)channel, empty, 'p, 'q) idx ->
     ('p,'r,unit) monad
+
   val recv_chan :
-    (('s,'k) recv_chan, 'k, 'p, 'q) t ->
-    (empty, 's, 'q, 'r) t ->
+    (('s,'t,('t,('ss,'tt,'kk)channel,'k) pass) channel, ('s,'t,'k) channel, 'p, 'q) idx -> 
+    (empty, ('ss,'tt,'kk)channel, 'q, 'r) idx ->
     ('p,'r,unit) monad
+
+  val send_new_chan : 
+    (('s,'t,('s,(neg,pos,'kk)channel,'k) pass) channel, ('s,'t,'k) channel, 'p, 'q) idx -> 
+    (empty,(pos,neg,'kk)channel, 'q, 'r) idx ->
+    ('p,'r,unit) monad
+                 
+(*
   val send_left :
     (('k1,'k2) select, 'k1, 'p, 'q) t ->
     ('p,'q,unit) monad
@@ -86,22 +104,10 @@ end
   type pos = Pos and neg = Neg
 
   type ('s,'v,'k) shot = Shot of 's * 'v * 'k Channel.t
+  type ('s,'c,'k) pass = Pass of 's * 'c * 'k Channel.t
   type finish = unit
 
   type ('s,'t,'k) channel = Chan of 's * 't * 'k Channel.t
-
-(*
-  type ('a,'b,'t) tag = 
-    | Tag_left : ('a,'b,'a) tag
-    | Tag_right : ('a,'b,'b) tag
-  
-  type ('a, 'k) send = 'a -> 'k
-  type ('a, 'k) recv = unit -> 'a * 'k
-  type ('s, 'k) send_chan = 's -> 'k
-  type ('s, 'k) recv_chan = unit -> 's * 'k
-  type ('k1, 'k2) select = {select:'k. ('k1,'k2,'k) tag -> 'k}
-  type ('k1, 'k2) branch = unit -> ('k1,'k2) either
- *)
 
   let send (get,set) v p =
     let Chan(s,t,c) = get p in
@@ -111,21 +117,40 @@ end
                                      
   let recv (get,set) p =
     let Chan(s,t,c) = get p in
-    let Shot(t, v, c') = Channel.receive c in
+    let Shot(_, v, c') = Channel.receive c in
     set p (Chan(s,t,c')), v
 
   let close (get,set) p =
     set p Empty, ()
+
+  let send_slot (get0,set0) (get1,set1) p =
+    let e, q = get1 p, set1 p Empty in
+    let Chan(s,t,c) = get0 q in
+    let c' = Channel.create () in
+    Channel.send c (Pass(s,e,c'));
+    set0 q (Chan(s,t,c')), ()
+
+  let send_chan = send_slot
+                   
+  let recv_slot (get0,set0) (get1,set1) p =
+    let Chan(s,t,c) = get0 p in
+    let Pass(_,e,c') = Channel.receive c in
+    set1 (set0 p (Chan(s,t,c'))) e, ()
+
+  let recv_chan = recv_slot
+
+  let send_new_chan : 
+    (('s,'t,('s,(neg,pos,'kk)channel,'k) pass) channel, ('s,'t,'k) channel, 'p, 'q) idx -> 
+    (empty,(pos,neg,'kk)channel, 'q, 'r) idx ->
+    ('p,'r,unit) monad = fun (get0,set0) (get1,set1) p ->
+    let Chan(s,t,c) = get0 p in
+    let c' = Channel.create () in
+    let cc = Channel.create () in
+    let e = Pass(s,Chan(Neg,Pos,cc),c') in
+    Channel.send c e;
+    set1 (set0 p (Chan(s,t,c'))) (Chan(Pos,Neg,cc)), ()
+    
 (*               
-  let send_chan (get0,set0) (get1,set1) p = 
-    let s, q = get1 p, set1 p Empty in
-    let r = set0 q (get0 q s) in
-    r, ()
-  let recv_chan (get0,set0) (get1,set1) p =
-    let s, k = get0 p () in
-    let q = set0 p k in
-    let r = set1 q s in
-    r, ()
   let send_left (get0,set0) p =
     set0 p ((get0 p).select Tag_left), ()
   let send_right (get0,set0) p =
@@ -191,25 +216,28 @@ val r :
 
 let _ = run (r())
 
-(*
+
 let p2 () = 
   send _0 7777 >>
-  recv_chan _0 _1 >>
-  recv _1 >>= fmap print_endline
+  recv_slot _0 _1 >>
+  recv _1 >>= fmap print_endline >>
+  close _0 >>
+  close _1
 
 let q2 () =
   recv _0 >>= fun v ->
-  new_chan _1 _2 (a2b finish) >>
-  send_chan _0 _2 >>
-  send _1 (string_of_int (v - 1111))
+  send_new_chan _0 _1 >>
+  send _1 (string_of_int (v - 1111)) >>
+  close _0 >>
+  close _1
 
 let r2 () =
-  new_chan _0 _1 (a2b (b2a_chan finish)) >>
-  fork _1 (q2 ()) >>
+  fork _0 (q2 ()) >>
   p2 ()
 
 let _ = run (r2())
 
+            (*
 let rec p3 n =
     if n>10 then 
       send_right _0 >> ret () 
