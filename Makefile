@@ -6,8 +6,8 @@ INCLUDES=                 # all relevant -I options here
 OCAMLFLAGS=$(INCLUDES)    # add other options for ocamlc here
 OCAMLOPTFLAGS=$(INCLUDES) # add other options for ocamlopt here
 
-CMI=monitor.cmi mVar.cmi channel.cmi
-BYTE_OBJS=monitor.cmo mVar.cmo channel.cmo session.cmo
+BYTE_OBJS=monitor.cmo mVar.cmo channel.cmo session.cmo example.cmo
+CMI=$(BYTE_OBJS:%.cmo=%.cmi)
 NATIVE_OBJS=$(BYTE_OBJS:%.cmo=%.cmx)
 
 all: test.byte
@@ -21,6 +21,11 @@ test.byte: $(BYTE_OBJS) $(CMI)
 test.top: $(BYTE_OBJS) $(CMI)
 	$(OCAMLMKTOP) -linkpkg -o test.top $(OCAMLFLAGS) $(BYTE_OBJS)
 
+example.byte: $(BYTE_OBJS) $(CMI)
+	$(OCAMLC) -linkpkg -o $@ $(OCAMLFLAGS) $(BYTE_OBJS)
+
+example.top: $(BYTE_OBJS) $(CMI)
+	$(OCAMLMKTOP) -linkpkg -o example.top $(OCAMLFLAGS) $(BYTE_OBJS)
 
 # Common rules
 .SUFFIXES: .ml .mli .cmo .cmi .cmx

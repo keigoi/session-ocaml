@@ -4,4 +4,7 @@
 *.o
 *.annot
 test.*
+*.top
+*.byte
+*.native
 
