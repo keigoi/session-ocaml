@@ -1,13 +1,10 @@
 channel.cmi :
-mVar.cmi :
 monitor.cmi :
 session.cmi :
 channel.cmo : monitor.cmi channel.cmi
 channel.cmx : monitor.cmx channel.cmi
 example.cmo : session.cmi
 example.cmx : session.cmx
-mVar.cmo : monitor.cmi mVar.cmi
-mVar.cmx : monitor.cmx mVar.cmi
 monitor.cmo : monitor.cmi
 monitor.cmx : monitor.cmi
 session.cmo : channel.cmi session.cmi

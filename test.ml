@@ -102,10 +102,6 @@ let _ =
 
 let _ = 
   let receive_all () c = C.receive_all c (+) 0
-  and try_receive () c = 
-    match C.try_receive c with
-    | None -> 0
-    | Some v -> v
   and receive_all_ () = 
     let buf = ref 0 in
     fun c ->
@@ -114,25 +110,10 @@ let _ =
       buf := 0;
       v
   and send () c n = C.send c n
-  and send_all () = 
-    let buf = ref [] in
-    fun c n ->
-      buf := n :: !buf;
-      if List.length !buf=10 || n = 1 then begin
-        C.send_all c (List.rev !buf);
-        buf := []
-      end
   in
   test_chan send receive_all;
   print_endline "Channel.send/receive_all OK.";
-  test_chan send_all receive_all;
-  print_endline "Channel.send/receive_all OK.";
   test_chan send receive_all_;
   print_endline "Channel.send/receive_all_ OK.";
-  test_chan send_all receive_all_;
-  print_endline "Channel.send/receive_all_ OK.";
-  test_chan send try_receive;
-  print_endline "Channel.send/try_receive OK.";
-  test_chan send_all try_receive;
-  print_endline "Channel.send/try_receive OK.";
+
   ()
