@@ -3,8 +3,10 @@ monitor.cmi :
 session.cmi :
 channel.cmo : monitor.cmi channel.cmi
 channel.cmx : monitor.cmx channel.cmi
-example.cmo : session.cmi
-example.cmx : session.cmx
+demo0.cmo : session.cmi
+demo0.cmx : session.cmx
+demoN.cmo : session.cmi
+demoN.cmx : session.cmx
 monitor.cmo : monitor.cmi
 monitor.cmx : monitor.cmi
 session.cmo : channel.cmi session.cmi

@@ -1,106 +1,4 @@
-open Session
-   
-module Example1 = struct
-  open Session0
-
-  let neg_server () =
-    recv () >>= fun x ->
-    send (-x) >>
-      close ()
-
-  let neg_client () =
-    send 12345 >>
-      recv () >>= fun x ->
-    print_int x; (* -12345 を印字 *)
-    close ()
-          
-  let neg_ch = new_channel ()
-                           
-  let _ =
-    ignore @@ Thread.create
-                (accept_ neg_ch neg_server) ();
-    connect_ neg_ch neg_client ()
-end
-
-module Example2 = struct
-  open Session0
-  open Example1
-         
-  type binop = Add | Sub | Mul | Div
-         
-  let eval_binop = function
-    | Add -> (+)   | Sub -> (-)
-    | Mul -> ( * )  | Div -> (/)
-
-  let rec arith_server () =
-    _branch_start (function
-       | `neg(p),r -> _branch (p,r) (neg_server ())
-       | `bin(p),r -> _branch (p,r) (binop_server ())
-       | `fin(p),r -> _branch (p,r) (close ()): [`neg of 'p1 | `bin of 'p2 | `fin of 'p3] * 'a -> 'b)
-                       
-  and binop_server () =
-    recv () >>= fun op ->
-    recv () >>= fun (x,y) ->
-    send (eval_binop op x y) >>
-    arith_server ()
-
-  let arith_client () =
-    _select (fun x -> `bin(x)) >>
-    send Add >> send (150, 250) >>
-    recv () >>= fun ans ->
-    print_int ans;
-    _select (fun x -> `fin(x)) >>
-    close () >>
-    return ()
-
-  let arith_ch = new_channel ()
-                             
-  let _ =
-    ignore @@ Thread.create
-      (accept_ arith_ch arith_server) ();
-    connect_ arith_ch arith_client ()
-end
-                    
-module Example3 = struct
-  open SessionN
-  open Example1
-  open Example2
-
-  let rec main_thread dch () =
-    accept arith_ch ~bindto:_0 >>
-      connect dch ~bindto:_1 >>
-      deleg_send _1 ~release:_0 >>
-      close _1 >>=
-      main_thread dch
-
-  let rec worker_thread dch () =
-    accept dch ~bindto:_1 >>
-      deleg_recv _1 ~bindto:_0 >>
-      close _1 >>
-      arith_server () >>= (* _0 を使う *)
-      worker_thread dch
-
-  let _ =
-    let deleg_ch = new_channel () in
-    for i = 0 to 5 do
-      ignore @@ Thread.create
-        (run (worker_thread deleg_ch)) ()
-    done;
-    ignore @@ Thread.create (run (main_thread deleg_ch)) ();
-    ignore @@ Thread.create (Session0.connect_ arith_ch arith_client) ();
-    ignore @@ Thread.create (Session0.connect_ arith_ch arith_client) ();
-    Session0.connect_ arith_ch arith_client ();
-    Session0.connect_ arith_ch arith_client ();
-                  
-    Unix.sleep 1
-end
-
-module type LensTest = sig
-  val _0 : 'a * 'ss -> 'b -> ('b * 'a) * 'ss
-  val _1 : 's * ('a * 'ss) -> 'b -> 's * ('b * 'ss)
-  (* ... *)
-end
-
+(* under reconstruction *)
 
                      (*
 module type LinSession = sig
@@ -248,7 +146,7 @@ let ch = TcpSession.channel SMTP.smtp_protocol opts
             send QUIT >>
             close ())) ()
                  
-
+n
   *)                                                              
         
 
