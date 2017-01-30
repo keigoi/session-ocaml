@@ -1,10 +1,8 @@
-OCAMLC=ocamlfind ocamlc -rectypes -thread -package unix,threads -I examples/
-OCAMLOPT=ocamlfind ocamlopt -rectypes -thread -package unix,threads -I examples/
-OCAMLMKTOP=ocamlfind ocamlmktop -rectypes -thread -package unix,threads
+OCAMLC=ocamlfind ocamlc -rectypes -I examples/
+OCAMLOPT=ocamlfind ocamlopt -rectypes -I examples/
+OCAMLMKTOP=ocamlfind ocamlmktop
 OCAMLDEP=ocamlfind ocamldep
-INCLUDES=                 # all relevant -I options here
-OCAMLFLAGS=$(INCLUDES)    # add other options for ocamlc here
-OCAMLOPTFLAGS=$(INCLUDES) # add other options for ocamlopt here
+OCAMLPKGFLAGS=-thread -package unix,threads
 
 BYTE_OBJS=monitor.cmo channel.cmo session.cmo
 CMI=$(BYTE_OBJS:%.cmo=%.cmi)
@@ -13,31 +11,31 @@ NATIVE_OBJS=$(BYTE_OBJS:%.cmo=%.cmx)
 all: example.byte
 
 session.cma: $(BYTE_OBJS) $(CMI)
-	$(OCAMLC) -linkpkg -a -o $@ $(OCAMLFLAGS) $(BYTE_OBJS) 
+	$(OCAMLC) -linkpkg -a -o $@ $(BYTE_OBJS) 
 
-session.cmxa: $(BYTE_OBJS) $(CMI)
-	$(OCAMLC) -linkpkg -a -o $@ $(OCAMLFLAGS) $(NATIVE_OBJS) 
+session.cmxa: $(NATIVE_OBJS) $(CMI)
+	$(OCAMLOPT) -linkpkg -a -o $@ $(NATIVE_OBJS) 
 
 session.top: $(BYTE_OBJS) $(CMI)
-	$(OCAMLMKTOP) -linkpkg -o $@ $(OCAMLFLAGS) $(BYTE_OBJS)
+	$(OCAMLMKTOP) -linkpkg -o $@ $(OCAMLPKGFLAGS) $(BYTE_OBJS)
 
-example.byte: $(BYTE_OBJS) $(CMI) examples/ex_single1.cmo examples/ex_single2.cmo examples/ex_multi1.cmo
-	$(OCAMLC) -linkpkg -o $@ $(OCAMLFLAGS) $(BYTE_OBJS) examples/ex_single1.cmo examples/ex_single2.cmo examples/ex_multi1.cmo
+example.byte: session.cma examples/ex_single1.cmo examples/ex_single2.cmo examples/ex_multi1.cmo
+	$(OCAMLC) -linkpkg -o $@ $(OCAMLPKGFLAGS) session.cma examples/ex_single1.cmo examples/ex_single2.cmo examples/ex_multi1.cmo
 
-test.byte: $(BYTE_OBJS) test.cmo $(CMI)
-	$(OCAMLC) -linkpkg -o $@ $(OCAMLFLAGS) $(BYTE_OBJS) test.cmo
+test.byte: session.cma tests/test.cmo $(CMI)
+	$(OCAMLC) -linkpkg -o $@ $(OCAMLPKGFLAGS) $(BYTE_OBJS) tests/test.cmo
 
 # Common rules
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
 
 .ml.cmo:
-	$(OCAMLC) $(OCAMLFLAGS) -c $<
+	$(OCAMLC) $(OCAMLPKGFLAGS) -c $<
 
 .mli.cmi:
-	$(OCAMLC) $(OCAMLFLAGS) -c $<
+	$(OCAMLC) $(OCAMLPKGFLAGS) -c $<
 
 .ml.cmx:
-	$(OCAMLOPT) $(OCAMLOPTFLAGS) -c $<
+	$(OCAMLOPT) $(OCAMLPKGFLAGS) -c $<
 
 # Clean up
 clean:
@@ -48,6 +46,7 @@ clean:
 # Dependencies
 depend:
 	$(OCAMLDEP) $(INCLUDES) *.mli *.ml > .depend
+	$(OCAMLDEP) $(INCLUDES) examples/*.ml >> .depend
 
 include .depend
 

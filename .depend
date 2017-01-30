@@ -11,5 +11,11 @@ monitor.cmo : monitor.cmi
 monitor.cmx : monitor.cmi
 session.cmo : channel.cmi session.cmi
 session.cmx : channel.cmx session.cmi
-test.cmo : channel.cmi
-test.cmx : channel.cmx
+examples/__working.cmo :
+examples/__working.cmx :
+examples/ex_multi1.cmo : session.cmi
+examples/ex_multi1.cmx : session.cmx
+examples/ex_single1.cmo : session.cmi
+examples/ex_single1.cmx : session.cmx
+examples/ex_single2.cmo : session.cmi
+examples/ex_single2.cmx : session.cmx
