@@ -1,31 +1,25 @@
 (* Multi-session example with slots and lenses *)
 open Session
 open SessionN
+open Ex_single2
 
-let rec main_thread dch () =
-  accept Ex_single2.arith_ch ~bindto:_0 >>
-    connect dch ~bindto:_1 >>
-    deleg_send _1 ~release:_0 >>
-    close _1 >>=
-    main_thread dch
+open Session;;
 
-let rec worker_thread dch () =
-  accept dch ~bindto:_1 >>
-    deleg_recv _1 ~bindto:_0 >>
-    close _1 >>
-    Ex_single2.arith_server () >>= (* arith_server uses _0 *)
-    worker_thread dch
+(* The service channel between the main thread and workers *)
+let deleg_ch = new_channel ();;
 
-let _ =
-  let deleg_ch = new_channel () in
-  for i = 0 to 5 do
-    ignore @@ Thread.create
-      (run (worker_thread deleg_ch)) ()
-  done;
-  ignore @@ Thread.create (run (main_thread deleg_ch)) ();
-  ignore @@ Thread.create (Session0.connect_ Ex_single2.arith_ch Ex_single2.arith_client) ();
-  ignore @@ Thread.create (Session0.connect_ Ex_single2.arith_ch Ex_single2.arith_client) ();
-  Session0.connect_ Ex_single2.arith_ch Ex_single2.arith_client ();
-  Session0.connect_ Ex_single2.arith_ch Ex_single2.arith_client ();
-                
-  Unix.sleep 1
+(* The main thread *)
+let rec main_thread () =
+  accept arith_ch ~bindto:_0 >> connect deleg_ch ~bindto:_1 >>
+  deleg_send _1 ~release:_0 >>
+  close _1 >>= main_thread;;
+
+(* The worker thread *)
+let rec worker_thread () =
+  accept deleg_ch ~bindto:_1 >> deleg_recv _1 ~bindto:_0 >>
+  close _1 >>
+  arith_server () >>= worker_thread;;
+
+(* Invokation of threads *)
+for i = 0 to 5 do Thread.create (run worker_thread) () done;
+run main_thread ();;

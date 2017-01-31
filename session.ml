@@ -23,8 +23,8 @@ let (>>) m n p = let q,_ = m p in n q
 type req = Req
 type resp = Resp
        
-type cli = resp * req
-type serv = req * resp
+type cli = req * resp
+type serv = resp * req
           
 type 'p cont =
   Msg : ('v * 'p cont Channel.t) -> [`msg of 'r * 'v * 'p] cont
@@ -64,17 +64,17 @@ module SessionN = struct
     set1 tt (ch1',q1), ()
   
   let accept ch ~bindto:(_,set) ss =
-    let ch' = Channel.receive ch in set ss (ch',(Req,Resp)), ()
+    let ch' = Channel.receive ch in set ss (ch',(Resp,Req)), ()
                              
   let connect ch ~bindto:(_,set) ss =
-    let ch' = Channel.create () in Channel.send ch ch'; set ss (ch',(Resp,Req)), ()
+    let ch' = Channel.create () in Channel.send ch ch'; set ss (ch',(Req,Resp)), ()
                                    
                                    
   let inp : 'p 'r. 'p -> 'r -> ('p,'r) sess = fun x _ -> Obj.magic x
   let out : 'p 'r. ('p,'r) sess -> 'p = Obj.magic
                                           
   let _branch_start : type br.
-                           (([`branch of 'r1 * br], 'r1*'r2) sess, 'x, 'ss, 'xx) slot
+                           (([`branch of 'r2 * br], 'r1*'r2) sess, 'x, 'ss, 'xx) slot
                            -> (br * ('r1*'r2) -> ('ss, 'uu,'v) monad)
                            -> ('ss, 'uu, 'v) monad
     = fun (get0,set0) f ss ->
@@ -83,7 +83,7 @@ module SessionN = struct
     | Branch(br) -> f (br,p) ss
 
   let _branch :
-        (([`branch of 'r1 * 'br], 'r1*'r2) sess, ('p,'r1*'r2) sess, 'ss, 'tt1) slot
+        (([`branch of 'r2 * 'br], 'r1*'r2) sess, ('p,'r1*'r2) sess, 'ss, 'tt1) slot
         -> 'p * ('r1*'r2)
         -> ('tt1,'uu,'v) monad
         -> ('ss, 'uu, 'v) monad
@@ -93,7 +93,7 @@ module SessionN = struct
          
          
   let _select : type br p.
-                     (([`branch of 'r2 * br],'r1*'r2) sess, (p,'r1*'r2) sess, 'ss, 'tt) slot
+                     (([`branch of 'r1 * br],'r1*'r2) sess, (p,'r1*'r2) sess, 'ss, 'tt) slot
                      -> (p -> br)
                      -> ('ss, 'tt, 'v) monad = fun (get0,set0) f ss ->
     let ch,p = get0 ss in
