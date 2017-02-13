@@ -19,6 +19,7 @@ val (>>=) : ('x,'y,'a) monad -> ('a -> ('y, 'z, 'b) monad) -> ('x,'z,'b) monad
 val (>>) : ('x,'y,'a) monad -> ('y,'z,'b) monad -> ('x,'z,'b) monad
 
 val run : ('a -> (all_empty, all_empty, 'b) monad) -> 'a -> 'b
+val run_ : ((all_empty, all_empty, 'b) monad) -> 'b
   
 (* channels *)
 type 'p channel

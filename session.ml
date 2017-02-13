@@ -11,6 +11,7 @@ let _3 = (fun (_,(_,(_,(a,_)))) -> a), (fun (s0,(s1,(s2,(_,ss)))) b -> (s0,(s1,(
 
 let rec all_empty = Empty, all_empty
 let run f x = snd (f x all_empty)
+let run_ m = snd (m all_empty)
 
 (* monads *)            
 type ('ss,'tt,'v) monad = 'ss -> 'tt * 'v
