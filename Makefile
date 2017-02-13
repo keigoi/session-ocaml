@@ -22,6 +22,9 @@ session.top: $(BYTE_OBJS) $(CMI)
 example.byte: session.cma examples/ex_single1.cmo examples/ex_single2.cmo examples/ex_multi1.cmo
 	$(OCAMLC) -linkpkg -o $@ $(OCAMLPKGFLAGS) session.cma examples/ex_single1.cmo examples/ex_single2.cmo examples/ex_multi1.cmo
 
+travel_agency.byte: session.cma examples/travel_agency.cmo
+	$(OCAMLC) -linkpkg -o $@ $(OCAMLPKGFLAGS) session.cma examples/travel_agency.cmo
+
 test.byte: session.cma tests/test.cmo $(CMI)
 	$(OCAMLC) -linkpkg -o $@ $(OCAMLPKGFLAGS) $(BYTE_OBJS) tests/test.cmo
 
