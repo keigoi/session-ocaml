@@ -27,16 +27,16 @@ let customer ch =
   let rec loop () = 
     _select _0 (fun x -> `quote(x)) >>
     send _0 "London to Paris, Eurostar" >>
-    recv _0 >>= fun cost ->
+    let%s cost = recv _0 in
     if cost < 100. then
       _select _0 (fun x -> `accept(x)) >>
       return cost
     else
       loop ()
   in
-  loop () >>= fun cost ->
+  let%s cost = loop () in
   send _0 (Address("Kensington, London SW7 2AZ, UK")) >>
-  recv _0 >>= fun (Date(date)) ->
+  let%s Date(date) = recv _0 in
   close _0 >>
   (Printf.printf "customer done. cost: %f\n" cost; return ())
 
@@ -81,7 +81,7 @@ let agency ctm_ch svc_ch  =
       _0 (function
           | `accept(p),q -> _branch _0 (p,q) (return ())
           | `quote(p),q -> _branch _0 (p,q) begin
-                                     recv _0 >>= fun dest ->
+                                     let%s dest = recv _0 in
                                      send _0 80.00 >>
                                      loop ()
                                    end)
@@ -113,7 +113,7 @@ val agency :
 let service svc_ch =
   accept svc_ch ~bindto:_0 >>
   deleg_recv _0 ~bindto:_1 >>
-  recv _1 >>= fun (Address(address)) ->
+  let%s Address(address) = recv _1 in
   send _1 (Date(0)) >>
   close _1 >>
   close _0

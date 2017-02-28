@@ -1,0 +1,4 @@
+PKG tyxml session-ocaml session-ocaml.ppx
+FLG -rectypes
+B +threads
+S .

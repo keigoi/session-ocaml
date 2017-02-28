@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 6959be27f3ecf96a47e5113bfeb48384)
+# DO NOT EDIT (digest: 4d67dd805f67ab603377d4a56c29f9c0)
 version = "0.1"
 description =
 "A concurrent / distributed programming with protocol typing, based on Session Types."
@@ -9,5 +9,17 @@ archive(byte, plugin) = "session-ocaml.cma"
 archive(native) = "session-ocaml.cmxa"
 archive(native, plugin) = "session-ocaml.cmxs"
 exists_if = "session-ocaml.cma"
+package "ppx" (
+ version = "0.1"
+ description =
+ "A concurrent / distributed programming with protocol typing, based on Session Types."
+ requires = "session-ocaml"
+ archive(syntax, preprocessor) = "ppx.cma"
+ archive(syntax, toploop) = "ppx.cma"
+ archive(syntax, preprocessor, native) = "ppx.cmxa"
+ archive(syntax, preprocessor, native, plugin) = "ppx.cmxs"
+ ppx = "ppx_session"
+ exists_if = "ppx.cma"
+)
 # OASIS_STOP
 

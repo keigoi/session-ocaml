@@ -19,3 +19,21 @@ Library "session-ocaml"
   ByteOpt: -rectypes
   NativeOpt: -rectypes
   BuildDepends: threads
+
+Library ppx
+  Path: ppx
+  BuildTools: ocamlbuild
+  Modules: Ppx_session
+  FindlibName: ppx
+  FindlibParent: session-ocaml
+  XMETAType: syntax
+  XMETARequires: session-ocaml
+  XMETAExtraLines: ppx = "ppx_session"
+  BuildDepends: compiler-libs, ppx_tools.metaquot
+
+Executable ppx_session
+  Path: ppx
+  BuildTools: ocamlbuild
+  MainIs: ppx_session_ex.ml
+  BuildDepends: compiler-libs.common, ppx_tools.metaquot
+  CompiledObject: best

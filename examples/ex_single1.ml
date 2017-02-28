@@ -3,13 +3,13 @@ open Session
 open Session0
 
 let neg_server () =
-  recv () >>= fun x ->
+  let%s x = recv () in
   send (-x) >>
     close ()
 
 let neg_client () =
   send 12345 >>
-    recv () >>= fun x ->
+  let%s x = recv () in
   Printf.printf "Negated: %d\n" x; (* prints "-12345" *)
   close ()
         

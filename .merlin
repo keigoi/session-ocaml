@@ -1,9 +1,11 @@
 FLG -rectypes
 B +threads
-PKG threads unix
+PKG threads unix compiler-libs.common ppx_tools ppx_tools.metaquot
 
 S lib
+S ppx
 S examples
 
 B _build/lib
+B _build/ppx
 B examples

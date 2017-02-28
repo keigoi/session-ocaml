@@ -24,17 +24,18 @@ let rec arith_server () =
      | `fin(p),r -> _branch (p,r) (close ()): [`neg of 'p1 | `bin of 'p2 | `fin of 'p3] * 'a -> 'b)
 
 and binop_server () =
-  recv () >>= fun op ->
-  recv () >>= fun (x,y) ->
+  let%s op = recv () in
+  let%s (x,y) = recv () in
   send (eval_binop op x y) >>
   arith_server ()
 
 let arith_client () =
-  _select (fun x -> `bin(x)) >>
-  send Add >> send (150, 250) >>
-  recv () >>= fun ans ->
+  [%select0 `bin] >>
+  send Add >>
+  send (150, 250) >>
+  let%s ans = recv () in
   Printf.printf "Answer: %d\n" ans;
-  _select (fun x -> `fin(x)) >>
+  [%select0 `fin] >>
   close () >>
   return ()
 
