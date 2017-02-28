@@ -104,7 +104,7 @@ let expression_mapper id mapper exp attrs =
      | `fin(p),r -> _branch (p,r) eN)
      : [`lab1 of 'p1 | .. | `labN of 'pN] * 'a -> 'b)
   *)
-  | "branch0", Pexp_match (exp, cases) -> (* TODO check exp is () *)
+  | "branch0", Pexp_match ({pexp_desc=Pexp_construct({txt=Longident.Lident("()")},None)}, cases) ->
      let open Ast_helper.Typ in
      let cases, labls = session_branch_clauses cases in
      let rows = List.mapi (fun i labl -> Rtag(labl,[],false,[var ("p"^string_of_int i)])) labls in
