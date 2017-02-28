@@ -5,8 +5,9 @@ Session-ocaml is an implementation of session types in OCaml.
 
 ## How to try it
 
-	make session.cma
-	ocaml -rectypes -I +threads unix.cma threads.cma session.cma
+	ocaml setup.ml -configure
+	ocaml setup.ml -build
+	ocaml -rectypes -I +threads -I _build/lib unix.cma threads.cma session-ocaml.cma
 
 
 ## Example

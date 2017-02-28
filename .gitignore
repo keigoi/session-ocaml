@@ -5,6 +5,16 @@
 *.annot
 test.*
 *.top
+
+_build
+**/*.mlpack
+**/*.odocl
+**/*.docdir
+setup.data
+setup.log
+**/*~
+setup.exe
+setup-dev.exe
 *.byte
 *.native
-
+_tests

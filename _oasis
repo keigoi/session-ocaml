@@ -1,0 +1,21 @@
+OASISFormat: 0.4
+Name:        session-ocaml
+Version:     0.1
+Homepage:    http://www.ct.info.gifu-u.ac.jp/~keigoi/session-ocaml/
+Synopsis:    A concurrent / distributed programming with protocol typing,
+  based on Session Types.
+Authors:     Keigo Imai
+License:     LGPL-2.1 with OCaml linking exception
+Plugins:     META (0.4)
+
+Library "session-ocaml"
+  Path:       lib
+  BuildTools: ocamlbuild
+  Modules:
+    Session
+  InternalModules:
+    Channel,
+    Monitor
+  ByteOpt: -rectypes
+  NativeOpt: -rectypes
+  BuildDepends: threads

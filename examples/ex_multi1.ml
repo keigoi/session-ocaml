@@ -21,5 +21,5 @@ let rec worker_thread () =
   arith_server () >>= worker_thread;;
 
 (* Invokation of threads *)
-for i = 0 to 5 do Thread.create (run worker_thread) () done;
+for i = 0 to 5 do ignore @@ Thread.create (run worker_thread) () done;
 run main_thread ();;
