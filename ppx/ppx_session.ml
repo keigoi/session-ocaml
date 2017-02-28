@@ -6,18 +6,20 @@ open Parsetree
 (* open Longident *)
 (* open Ast_convenience *)
 
-let newname i =
-  Printf.sprintf "__ppx_session_%d" i
+let newname prefix i =
+  Printf.sprintf "__ppx_session_%s_%d" prefix i
 
 let monad_bind =
   [%expr [%e Ast_helper.Exp.ident (Ast_convenience.lid ("Session.>>="))]]
 
-               
+let error loc (s:string) = 
+  Location.raise_errorf ~loc "%s" s
+  
 (* [?? = e0] and [?? = e1] and .. ==> [dum$0 = e0] and [dum$1 = e1] and .. 
    (to use with bindbody_of_let.) *)
 let bindings_of_let bindings =
   List.mapi (fun i binding ->
-      {binding with pvb_pat = Ast_convenience.pvar (newname i)}
+      {binding with pvb_pat = Ast_convenience.pvar (newname "let" i)}
     ) bindings
 
 (* [p0 = ??] and [p1 = ??] and .. and e ==> [bind dum$0 (fun p0 -> bind dum$1 (fun p1 -> (.. e)))] *)
@@ -26,13 +28,42 @@ let bindbody_of_let exploc bindings exp =
     match bindings with
     | [] -> exp
     | binding :: t ->
-      let name = (Ast_convenience.evar (newname i)) [@metaloc binding.pvb_expr.pexp_loc] in
+      let name = (Ast_convenience.evar (newname "let" i)) [@metaloc binding.pvb_expr.pexp_loc] in
       let f = [%expr (fun [%p binding.pvb_pat] -> [%e make i t])] [@metaloc binding.pvb_loc] in
       let new_exp = [%expr [%e monad_bind] [%e name] [%e f]] [@metaloc exploc] in
       { new_exp with pexp_attributes = binding.pvb_attributes }
   in
   make 0 bindings
-   
+  
+(* Converts match clauses to handle branching.
+  | `lab1 -> e1
+  | ..
+  | `labN -> eN
+  ==> 
+  | `lab1(p),r -> _branch (p,r) e1
+  | ..
+  | `fin(p),r -> _branch (p,r) eN)
+  : [`lab1 of 'p1 | .. | `labN of 'pN] * 'a -> 'b)
+*)
+let session_branch_clauses cases =
+  let conv = function
+    | {pc_lhs={ppat_desc=Ppat_variant(lab,pat);ppat_loc;ppat_attributes};pc_guard;pc_rhs=rhs_orig} ->
+       if pat=None then
+         let open Ast_convenience in
+         let open Ast_helper in
+         let open Ast_helper in
+         let protocol_var = newname "match_p" 0 in
+         let polarity_var = newname "match_q" 0 in
+         let pat = [%pat? ( [%p Pat.variant lab (Some(pvar protocol_var)) ], [%p pvar polarity_var])] in
+         let pair = [%expr [%e evar protocol_var],[%e evar polarity_var]] in
+         let expr = [%expr Session.Session0._branch [%e pair] [%e rhs_orig]] in
+         {pc_lhs={ppat_desc=pat.ppat_desc;ppat_loc;ppat_attributes};pc_guard;pc_rhs=expr}
+       else
+         error ppat_loc "Invalid variant pattern"
+    | {pc_lhs={ppat_loc=loc}} -> error loc "Invalid pattern"
+  in
+  List.map conv cases
+
 let expression_mapper id mapper exp attrs =
   let open Ast_mapper in
   let pexp_attributes = attrs @ exp.pexp_attributes in
@@ -48,17 +79,17 @@ let expression_mapper id mapper exp attrs =
           (bindbody_of_let exp.pexp_loc vbl expression)
       in
       Some (mapper.expr mapper { new_exp with pexp_attributes })
-  | "s", _ -> Location.raise_errorf ~loc:pexp_loc "Invalid content for extension %%s"
+  | "s", _ -> error pexp_loc "Invalid content for extension %s"
       
-  (* [%select0 `labl] ==> Session0._select (fun x -> `labl(x)) *)
+  (* [%select0 `labl] ==> _select (fun x -> `labl(x)) *)
   | "select0", Pexp_variant (labl, None) ->
      let new_exp =
-       [%expr Session0._select
+       [%expr Session.Session0._select
               (fun [%p Ast_convenience.pvar "x"] ->
-                [%e {pexp_desc=Pexp_variant (labl, Some(Ast_convenience.evar "x")); pexp_loc; pexp_attributes } ])]
+                [%e Ast_helper.Exp.variant labl (Some(Ast_convenience.evar "x"))]) ]
      in
      Some (mapper.expr mapper {new_exp with pexp_attributes})
-  | "select0", _ -> Location.raise_errorf ~loc:pexp_loc "Invalid content for extension %%select0"
+  | "select0", _ -> error pexp_loc "Invalid content for extension %select0"
      
   (*
   match%branch0 () with
@@ -72,7 +103,12 @@ let expression_mapper id mapper exp attrs =
      | `fin(p),r -> _branch (p,r) eN)
      : [`lab1 of 'p1 | .. | `labN of 'pN] * 'a -> 'b)
   *)
-  (* | "branch0", Pexp_match (exp, cases) -> *)
+  | "branch0", Pexp_match (exp, cases) -> (* TODO check exp is () *)
+    let new_exp =
+      [%expr Session.Session0._branch_start [%e Ast_helper.Exp.function_ (session_branch_clauses cases)]]
+    in
+    Some (mapper.expr mapper {new_exp with pexp_attributes})
+  | "branch0", _ -> error pexp_loc "Invalid content for extension %branch0"
      
   | _ -> None
 
@@ -88,4 +124,3 @@ let mapper_fun _ =
   | _ -> default_mapper.expr mapper outer
   in  
   {default_mapper with expr}
-

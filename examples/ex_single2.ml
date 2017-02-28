@@ -12,16 +12,10 @@ let eval_binop = function
   | Mul -> ( * )  | Div -> (/)
 
 let rec arith_server () =
-  (*
   match%branch0 () with
-  | `neg -> neg_server ()
+  | `neg -> Ex_single1.neg_server ()
   | `bin -> binop_server ()
   | `fin -> close ()
-  *)
-  _branch_start (function
-     | `neg(p),r -> _branch (p,r) (Ex_single1.neg_server ())
-     | `bin(p),r -> _branch (p,r) (binop_server ())
-     | `fin(p),r -> _branch (p,r) (close ()): [`neg of 'p1 | `bin of 'p2 | `fin of 'p3] * 'a -> 'b)
 
 and binop_server () =
   let%s op = recv () in
