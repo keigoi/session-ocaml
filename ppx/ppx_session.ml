@@ -47,12 +47,12 @@ let session_select select_exp labl =
   | ..
   | `labN -> eN
   ==> 
-  | `lab1(p),r -> _branch (p,r) e1
+  | `lab1(p),r -> _branch e0? (p,r) e1
   | ..
-  | `fin(p),r -> _branch (p,r) eN)
+  | `fin(p),r -> _branch e0? (p,r) eN)
   : [`lab1 of 'p1 | .. | `labN of 'pN] * 'a -> 'b)
 *)
-let session_branch_clauses cases =
+let session_branch_clauses branch_exp cases =
   let conv = function
     | {pc_lhs={ppat_desc=Ppat_variant(labl,pat);ppat_loc;ppat_attributes};pc_guard;pc_rhs=rhs_orig} ->
        if pat=None then
@@ -63,7 +63,7 @@ let session_branch_clauses cases =
          let polarity_var = newname "match_q" 0 in
          let pat = [%pat? ( [%p Pat.variant labl (Some(pvar protocol_var)) ], [%p pvar polarity_var])] in
          let pair = [%expr [%e evar protocol_var],[%e evar polarity_var]] in
-         let expr = [%expr Session.Session0._branch [%e pair] [%e rhs_orig]] in
+         let expr = [%expr [%e branch_exp] [%e pair] [%e rhs_orig]] in
          {pc_lhs={ppat_desc=pat.ppat_desc;ppat_loc;ppat_attributes};pc_guard;pc_rhs=expr}, labl
        else
          error ppat_loc "Invalid variant pattern"
@@ -71,6 +71,12 @@ let session_branch_clauses cases =
   in
   List.split (List.map conv cases)
 
+let make_branch_func_types labls =
+  let open Ast_helper.Typ in
+  let rows =
+    List.mapi (fun i labl -> Rtag(labl,[],false,[var ("p"^string_of_int i)])) labls
+  in
+  [%type: [%t (variant rows Closed None)] * 'a -> 'b ]
 
 let expression_mapper id mapper exp attrs =
   let open Ast_mapper in
@@ -104,30 +110,41 @@ let expression_mapper id mapper exp attrs =
   | "select", _ -> error pexp_loc "Invalid content for extension %select"
      
   (* session branching
-  match%branch0 () with
-  | `lab1 -> e1
-  | ..
-  | `labN -> eN
-  ==> 
+  match%branch0 () with | `lab1 -> e1 | .. | `labN -> eN
+  ==>
   _branch_start ((function
-     | `lab1(p),r -> _branch (p,r) e1
-     | ..
-     | `fin(p),r -> _branch (p,r) eN)
+     | `lab1(p),r -> _branch (p,r) e1 | ..
+     | `labN(p),r -> _branch (p,r) eN)
      : [`lab1 of 'p1 | .. | `labN of 'pN] * 'a -> 'b)
   *)
   | "branch0", Pexp_match ({pexp_desc=Pexp_construct({txt=Longident.Lident("()")},None)}, cases) ->
-     let open Ast_helper.Typ in
-     let cases, labls = session_branch_clauses cases in
-     let rows = List.mapi (fun i labl -> Rtag(labl,[],false,[var ("p"^string_of_int i)])) labls in
-     let new_typ =
-       [%type: [%t (variant rows Closed None)] * 'a -> 'b ]
-     in
+     let cases, labls = session_branch_clauses [%expr Session.Session0._branch] cases in
+     let new_typ = make_branch_func_types labls in
      let new_exp =
        [%expr Session.Session0._branch_start ([%e Ast_helper.Exp.function_ cases] : [%t new_typ ])]
     in
     Some (mapper.expr mapper {new_exp with pexp_attributes})
   | "branch0", _ -> error pexp_loc "Invalid content for extension %branch0"
-     
+
+  (*
+  match%branch e0 with | `lab1 -> e1 | .. | `labN -> eN
+  ==>
+  _branch_start e0 ((function
+     | `lab1(p),r -> _branch e0 (p,r) e1 | ..
+     | `labN(p),r -> _branch e0 (p,r) eN)
+     : [`lab1 of 'p1 | .. | `labN of 'pN] * 'a -> 'b)
+  *)
+  | "branch", Pexp_match (e0, cases) ->
+     let open Ast_helper.Typ in
+     let cases, labls = session_branch_clauses [%expr Session.SessionN._branch [%e e0]] cases in
+     let new_typ = make_branch_func_types labls in
+     let new_exp =
+       [%expr Session.SessionN._branch_start [%e e0]
+              ([%e Ast_helper.Exp.function_ cases] : [%t new_typ ])]
+    in
+    Some (mapper.expr mapper {new_exp with pexp_attributes})
+  | "branch", _ -> error pexp_loc "Invalid content for extension %branch"
+
   | _ -> None
 
 let mapper_fun _ =

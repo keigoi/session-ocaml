@@ -38,13 +38,12 @@ val customer :
   (Session.empty * 'b, Session.empty * 'b, unit) Session.monad = <fun>
  *)
 
-(*  
 let agency ctm_ch svc_ch  =
   accept ctm_ch ~bindto:_0 >>
   let rec loop () =
     match%branch _0 with
-    | `accept(p),q -> return ()
-    | `quote(p),q -> begin
+    | `accept -> return ()
+    | `quote -> begin
          let%s dest = recv _0 in
          send _0 80.00 >>
          loop ()
@@ -54,24 +53,7 @@ let agency ctm_ch svc_ch  =
   connect svc_ch ~bindto:_1 >>
   deleg_send _1 ~release:_0 >>
   close _1    
- *)
-  
-let agency ctm_ch svc_ch  =
-  accept ctm_ch ~bindto:_0 >>
-  let rec loop () =
-    _branch_start
-      _0 (function
-          | `accept(p),q -> _branch _0 (p,q) (return ())
-          | `quote(p),q -> _branch _0 (p,q) begin
-                                     let%s dest = recv _0 in
-                                     send _0 80.00 >>
-                                     loop ()
-                                   end)
-  in
-  loop () >>
-  connect svc_ch ~bindto:_1 >>
-  deleg_send _1 ~release:_0 >>
-  close _1    
+
 
 (*
 val agency :
