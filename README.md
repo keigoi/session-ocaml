@@ -14,9 +14,11 @@ And type at the top directory of this distribution:
 
 Then you can play with ```session-ocaml```:
 
-	ocaml -rectypes
+	ocaml -short-paths
 
-Note that [.ocamlinit](.ocamlinit) file automatically pre-loads all required packages here.
+Argument ```-short-paths``` is optional (it makes ```ocaml``` show the shortest path for each type).
+Note that [.ocamlinit](.ocamlinit) file automatically pre-loads all required packages here and sets -rectypes option.
+It also does ```open Session```.
 
 ## Example
 
@@ -28,7 +30,7 @@ To compile examples, you need to install ```session-ocaml``` by:
 
 	ocaml setup.ml -install
 
-Then, you can build them by typing ```make``` inside examples directory.
+Then, you can build them by typing ```make``` inside ```examples``` directory.
 
 To uninstall ```session-ocaml```, type:
 
@@ -90,6 +92,10 @@ or
 ```
   [%select _n `bark]
 ```
+
+## TODO
+
+* Better error reporting inside %branch0 and %branch
 
 ----
 author: Keigo IMAI (@keigoi on Twitter / keigoi __AT__ gifu-u.ac.jp)

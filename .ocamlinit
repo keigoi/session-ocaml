@@ -12,3 +12,5 @@ let () =
 (* Load each lib provided by this project. *)
 #directory "_build/lib";;
 #load "session-ocaml.cma";;
+
+open Session;;
