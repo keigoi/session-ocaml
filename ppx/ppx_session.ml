@@ -47,22 +47,23 @@ let bindbody_of_let exploc bindings exp =
 *)
 let session_branch_clauses cases =
   let conv = function
-    | {pc_lhs={ppat_desc=Ppat_variant(lab,pat);ppat_loc;ppat_attributes};pc_guard;pc_rhs=rhs_orig} ->
+    | {pc_lhs={ppat_desc=Ppat_variant(labl,pat);ppat_loc;ppat_attributes};pc_guard;pc_rhs=rhs_orig} ->
        if pat=None then
          let open Ast_convenience in
          let open Ast_helper in
          let open Ast_helper in
          let protocol_var = newname "match_p" 0 in
          let polarity_var = newname "match_q" 0 in
-         let pat = [%pat? ( [%p Pat.variant lab (Some(pvar protocol_var)) ], [%p pvar polarity_var])] in
+         let pat = [%pat? ( [%p Pat.variant labl (Some(pvar protocol_var)) ], [%p pvar polarity_var])] in
          let pair = [%expr [%e evar protocol_var],[%e evar polarity_var]] in
          let expr = [%expr Session.Session0._branch [%e pair] [%e rhs_orig]] in
-         {pc_lhs={ppat_desc=pat.ppat_desc;ppat_loc;ppat_attributes};pc_guard;pc_rhs=expr}
+         {pc_lhs={ppat_desc=pat.ppat_desc;ppat_loc;ppat_attributes};pc_guard;pc_rhs=expr}, labl
        else
          error ppat_loc "Invalid variant pattern"
     | {pc_lhs={ppat_loc=loc}} -> error loc "Invalid pattern"
   in
-  List.map conv cases
+  List.split (List.map conv cases)
+
 
 let expression_mapper id mapper exp attrs =
   let open Ast_mapper in
@@ -104,8 +105,14 @@ let expression_mapper id mapper exp attrs =
      : [`lab1 of 'p1 | .. | `labN of 'pN] * 'a -> 'b)
   *)
   | "branch0", Pexp_match (exp, cases) -> (* TODO check exp is () *)
-    let new_exp =
-      [%expr Session.Session0._branch_start [%e Ast_helper.Exp.function_ (session_branch_clauses cases)]]
+     let open Ast_helper.Typ in
+     let cases, labls = session_branch_clauses cases in
+     let rows = List.mapi (fun i labl -> Rtag(labl,[],false,[var ("p"^string_of_int i)])) labls in
+     let new_typ =
+       [%type: [%t (variant rows Closed None)] * 'a -> 'b ]
+     in
+     let new_exp =
+       [%expr Session.Session0._branch_start ([%e Ast_helper.Exp.function_ cases] : [%t new_typ ])]
     in
     Some (mapper.expr mapper {new_exp with pexp_attributes})
   | "branch0", _ -> error pexp_loc "Invalid content for extension %branch0"
