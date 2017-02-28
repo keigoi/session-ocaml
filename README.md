@@ -39,40 +39,57 @@ Or,
 	ocamlfind remove session-ocaml
 
 
-## Wishlist
+# Macro for branching / selection
 
-### Macro for branching / selection
+For branching on arbitrary labels, we provide a macro ```match%branch0``` and ```match%branch```.
 
-For branching on arbitrary labels, we will provide a macro ```match%branch0```:
+Single-channel case (```open Session0```):
 
 ```ocaml
   match%branch0 () with
-  | `neg -> neg_server ()
-  | `bin -> binop_server ()
-  | `fin -> close ()
+  | `apple  -> send 100
+  | `banana -> recv ()
+  | `orange -> send "Hello!"
 ```
 
-which will expand to:
+Its protocol type will be:
+
+```
+  [`branch of resp *
+    [ `apple of [`msg of req * int * 'a]
+    | `banana of [`msg of resp * 'v * 'a]
+    | `orange of [`msg of req * string * 'a]]
+```
+
+Multi-channel case (```open SessionN```):
 
 ```ocaml
-  _branch_start (function
-     | `neg(p),r -> _branch (p,r) (neg_server ())
-     | `bin(p),r -> _branch (p,r) (binop_server ())
-     | `fin(p),r -> _branch (p,r) (close ())
-     : [`neg of 'p1 | `bin of 'p2 | `fin of 'p3] * 'a -> 'b)
-```     
+  match%branch _2 with
+  | `batman  -> [%select _2 `goodbye]
+  | `ironman -> let%s x = recv _2 in send _2 x
+  | `hulk    -> send _2 "foobar"
+```
 
-  Similarly, we are developing a macro for selection, like 
+Protocol type:
+
+```
+  [ `branch of resp *
+    [ `batman  of [ `branch of req * _[> `goodbye of '_e ] ]
+    | `hulk    of [ `msg of req * string * '_e ]
+    | `ironman of [ `msg of resp * '_f * [ `msg of req * '_f * '_e ] ] ] ]
+```
+
+  Similarly, we have a macro for selection, like 
 
 ```ocaml
   [%select0 `label]
 ```
 
-  which expands to
+or
 
 ```
-  _select (fun x -> `label(x))
-```  
+  [%select _n `bark]
+```
 
 ----
 author: Keigo IMAI (@keigoi on Twitter / keigoi __AT__ gifu-u.ac.jp)
