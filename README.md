@@ -2,19 +2,42 @@
 
 Session-ocaml is an implementation of session types in OCaml.
 
-
 ## How to try it
+
+Prepare your favourite OCaml installation and install ```findlib```.
+We recommend to use ```opam```.
+
+And type at the top directory of this distribution:
 
 	ocaml setup.ml -configure
 	ocaml setup.ml -build
-	ocaml -rectypes -I +threads -I _build/lib unix.cma threads.cma session-ocaml.cma
 
+Then you can play with ```session-ocaml```:
+
+	ocaml -rectypes
+
+Note that [.ocamlinit](.ocamlinit) file automatically pre-loads all required packages here.
 
 ## Example
 
 * [A single session 1](examples/ex_single1.ml).
 * [A single session 2](examples/ex_single2.ml).
 * [Multiple sessions 1](examples/ex_multi1.ml).
+
+To compile examples, you need to install ```session-ocaml``` by:
+
+	ocaml setup.ml -install
+
+Then, you can build them by typing ```make``` inside examples directory.
+
+To uninstall ```session-ocaml```, type:
+
+	ocaml setup.ml -uninstall
+
+Or,
+
+	ocamlfind remove session-ocaml
+
 
 ## Wishlist
 

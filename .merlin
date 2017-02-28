@@ -1,3 +1,9 @@
-FLG -rectypes session.mli
+FLG -rectypes
 B +threads
 PKG threads unix
+
+S lib
+S examples
+
+B _build/lib
+B examples

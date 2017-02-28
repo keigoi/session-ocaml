@@ -22,3 +22,5 @@ true: annot, bin_annot
 <lib/*.ml{,i,y}>: oasis_library_session_ocaml_native
 <lib/*.ml{,i,y}>: pkg_threads
 # OASIS_STOP
+
+"examples": not_hygienic
