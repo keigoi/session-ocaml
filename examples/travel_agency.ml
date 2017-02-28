@@ -3,33 +3,15 @@ open SessionN
 
 type address = Address of string
 type date = Date of int                        
-
-(*
-let customer ch =
-  connect ch ~bindto:_0 >>
-  let rec loop () = 
-    [%select _0 `quote(x)] >>
-    send _0 "London to Paris, Eurostar" >>
-    let%s cost = recv _0 in
-    if cost < 100. then
-      [%select _0 `accept]
-    else
-      loop ()
-  in
-  loop () >>
-  send _0 (Address("Kensington, London SW7 2AZ, UK")) >>
-  let (Date(date)) = recv _0 in
-  close _0             
-  *)
    
 let customer ch =
   connect ch ~bindto:_0 >>
   let rec loop () = 
-    _select _0 (fun x -> `quote(x)) >>
+    [%select _0 `quote] >>
     send _0 "London to Paris, Eurostar" >>
     let%s cost = recv _0 in
     if cost < 100. then
-      _select _0 (fun x -> `accept(x)) >>
+      [%select _0 `accept] >>
       return cost
     else
       loop ()

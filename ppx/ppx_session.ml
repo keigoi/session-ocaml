@@ -34,6 +34,13 @@ let bindbody_of_let exploc bindings exp =
       { new_exp with pexp_attributes = binding.pvb_attributes }
   in
   make 0 bindings
+
+let session_select select_exp labl =
+  let new_exp =
+    [%expr [%e select_exp ]
+           (fun [%p Ast_convenience.pvar "x"] ->
+             [%e Ast_helper.Exp.variant labl (Some(Ast_convenience.evar "x"))]) ]
+  in new_exp
   
 (* Converts match clauses to handle branching.
   | `lab1 -> e1
@@ -70,7 +77,8 @@ let expression_mapper id mapper exp attrs =
   let pexp_attributes = attrs @ exp.pexp_attributes in
   let pexp_loc=exp.pexp_loc in
   match id, exp.pexp_desc with
-    
+
+  (* monadic bind *)
   (* let%s p = e1 in e2 ==> let dum$0 = e1 in Session.(>>=) dum$0 e2 *)
   | "s", Pexp_let (Nonrecursive, vbl, expression) ->
       let new_exp =
@@ -81,18 +89,21 @@ let expression_mapper id mapper exp attrs =
       in
       Some (mapper.expr mapper { new_exp with pexp_attributes })
   | "s", _ -> error pexp_loc "Invalid content for extension %s"
-      
+
+  (* session selection *)
   (* [%select0 `labl] ==> _select (fun x -> `labl(x)) *)
   | "select0", Pexp_variant (labl, None) ->
-     let new_exp =
-       [%expr Session.Session0._select
-              (fun [%p Ast_convenience.pvar "x"] ->
-                [%e Ast_helper.Exp.variant labl (Some(Ast_convenience.evar "x"))]) ]
-     in
+     let new_exp = session_select [%expr Session.Session0._select ] labl in
      Some (mapper.expr mapper {new_exp with pexp_attributes})
   | "select0", _ -> error pexp_loc "Invalid content for extension %select0"
+
+  (* [%select _n `labl] ==> _select _n (fun x -> `labl(x)) *)
+  | "select", Pexp_apply(e1, [("",{pexp_desc=Pexp_variant (labl, None)})]) ->
+     let new_exp = session_select [%expr Session.SessionN._select [%e e1] ] labl in
+     Some (mapper.expr mapper {new_exp with pexp_attributes})
+  | "select", _ -> error pexp_loc "Invalid content for extension %select"
      
-  (*
+  (* session branching
   match%branch0 () with
   | `lab1 -> e1
   | ..
