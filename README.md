@@ -4,11 +4,13 @@ Session-ocaml is an implementation of session types in OCaml.
 
 ## How to try it
 
-Prepare your favourite OCaml installation and install ```findlib```.
+Prepare OCaml 4.02.1 and install ```findlib```, ```ocamlbuild```, ```ppx_tools```.
 We recommend to use ```opam```.
 
-Install prerequisite libraries.
+Install the compiler and prerequisite libraries.
 
+    opam switch 4.02.1
+    eval `opam config env`
     opam install ocamlfind ocamlbuild ppx_tools
 
 And type at the top directory of this distribution:
