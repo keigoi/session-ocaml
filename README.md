@@ -1,4 +1,4 @@
-#Session-ocaml
+# Session-ocaml
 
 Session-ocaml is an implementation of session types in OCaml.
 
@@ -7,17 +7,23 @@ Session-ocaml is an implementation of session types in OCaml.
 Prepare your favourite OCaml installation and install ```findlib```.
 We recommend to use ```opam```.
 
+Install prerequisite libraries.
+
+    opam install ocamlfind ocamlbuild ppx_tools
+
 And type at the top directory of this distribution:
 
-	ocaml setup.ml -configure
-	ocaml setup.ml -build
+    ocaml setup.ml -configure
+    ocaml setup.ml -build
+    ocaml setup.ml -install
 
 Then you can play with ```session-ocaml```:
 
-	ocaml -short-paths
+    cd examples
+    ocaml -short-paths
 
 Argument ```-short-paths``` is optional (it makes ```ocaml``` show the shortest path for each type).
-Note that [.ocamlinit](.ocamlinit) file automatically pre-loads all required packages here and sets -rectypes option.
+Note that [.ocamlinit](examples/.ocamlinit) file automatically pre-loads all required packages here and sets -rectypes option.
 It also does ```open Session```.
 
 ## Example
@@ -81,7 +87,7 @@ Protocol type:
     | `ironman of [ `msg of resp * '_f * [ `msg of req * '_f * '_e ] ] ] ]
 ```
 
-  Similarly, we have a macro for selection, like 
+  Similarly, we have a macro for selection, like
 
 ```ocaml
   [%select0 `label]

@@ -5,6 +5,8 @@
 *.annot
 test.*
 *.top
+\#*
+\.\#*
 
 _build
 **/*.mlpack
