@@ -7,6 +7,7 @@ let () =
 #thread;;
 
 #require "threads";;
+#require "str";;
 #rectypes;;
 
 (* Load each lib provided by this project. *)

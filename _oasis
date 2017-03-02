@@ -18,7 +18,7 @@ Library "session-ocaml"
     Monitor
   ByteOpt: -rectypes
   NativeOpt: -rectypes
-  BuildDepends: threads
+  BuildDepends: threads, str
 
 Library ppx
   Path: ppx

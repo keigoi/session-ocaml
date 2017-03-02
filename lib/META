@@ -1,9 +1,9 @@
 # OASIS_START
-# DO NOT EDIT (digest: 4d67dd805f67ab603377d4a56c29f9c0)
+# DO NOT EDIT (digest: c9e26f5a07cf09a35ec4f0e4d9d3845f)
 version = "0.1"
 description =
 "A concurrent / distributed programming with protocol typing, based on Session Types."
-requires = "threads"
+requires = "threads str"
 archive(byte) = "session-ocaml.cma"
 archive(byte, plugin) = "session-ocaml.cma"
 archive(native) = "session-ocaml.cmxa"
