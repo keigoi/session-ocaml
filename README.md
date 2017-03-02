@@ -33,6 +33,7 @@ It also does ```open Session```.
 * [A single session 1](examples/ex_single1.ml).
 * [A single session 2](examples/ex_single2.ml).
 * [Multiple sessions 1](examples/ex_multi1.ml).
+* [SMTP protocol](examples/smtp.ml).
 
 To compile examples, you need to install ```session-ocaml``` by:
 
