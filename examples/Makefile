@@ -1,9 +1,9 @@
-OCAMLC=ocamlfind ocamlc -verbose -thread -package session-ocaml,session-ocaml.ppx -rectypes
-OCAMLOPT=ocamlfind ocamlc -thread -package session-ocaml -rectypes
+OCAMLC=ocamlfind ocamlc -thread -package session-ocaml,session-ocaml.ppx -rectypes -short-paths
+OCAMLOPT=ocamlfind ocamlc -thread -package session-ocaml -rectypes -short-paths
 OCAMLMKTOP=ocamlfind ocamlmktop -thread -package session-ocaml -rectypes
 OCAMLDEP=ocamlfind ocamldep -package session-ocaml
 
-EXAMPLES=ex_single1 ex_single2 ex_multi1 travel_agency
+EXAMPLES=ex_single1 ex_single2 ex_multi1 travel_agency smtp
 
 EXAMPLES_BYTE = $(EXAMPLES:%=%.byte)
 
@@ -42,4 +42,3 @@ depend:
 	$(OCAMLDEP) $(INCLUDES) *.mli *.ml > .depend
 
 include .depend
-
