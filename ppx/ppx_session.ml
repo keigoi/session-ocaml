@@ -104,7 +104,7 @@ let expression_mapper id mapper exp attrs =
   | "select0", _ -> error pexp_loc "Invalid content for extension %select0"
 
   (* [%select _n `labl] ==> _select _n (fun x -> `labl(x)) *)
-  | "select", Pexp_apply(e1, [("",{pexp_desc=Pexp_variant (labl, None)})]) ->
+  | "select", Pexp_apply(e1, [(_,{pexp_desc=Pexp_variant (labl, None)})]) ->
      let new_exp = session_select [%expr Session.SessionN._select [%e e1] ] labl in
      Some (mapper.expr mapper {new_exp with pexp_attributes})
   | "select", _ -> error pexp_loc "Invalid content for extension %select"

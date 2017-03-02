@@ -4,28 +4,27 @@ Session-ocaml is an implementation of session types in OCaml.
 
 ## How to try it
 
-Prepare OCaml 4.02.1 and install ```findlib```, ```ocamlbuild```, ```ppx_tools```.
-We recommend to use ```opam```.
+Prepare OCaml 4.02.1 or later and install ```findlib```, ```ocamlbuild```, ```ppx_tools```.
+We recommend to use ```opam``` and OCaml 4.04.0.
 
 Install the compiler and prerequisite libraries.
 
-    opam switch 4.02.1
+    opam switch 4.04.0
     eval `opam config env`
     opam install ocamlfind ocamlbuild ppx_tools
 
 And type at the top directory of this distribution:
 
-    ocaml setup.ml -configure
-    ocaml setup.ml -build
-    ocaml setup.ml -install
+    make
 
 Then you can play with ```session-ocaml```:
 
     cd examples
-    ocaml -short-paths
+    make                # build examples
+    ocaml -short-paths  # play with OCaml toplevel (utop will also do) 
 
 Argument ```-short-paths``` is optional (it makes ```ocaml``` show the shortest path for each type).
-Note that [.ocamlinit](examples/.ocamlinit) file automatically pre-loads all required packages here and sets -rectypes option.
+Note that [.ocamlinit](examples/.ocamlinit) file automatically pre-loads all required packages into OCaml toplevel and sets -rectypes option.
 It also does ```open Session```.
 
 ## Example
