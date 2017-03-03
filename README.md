@@ -13,8 +13,10 @@ Install the compiler and prerequisite libraries.
     eval `opam config env`
     opam install ocamlfind ocamlbuild ppx_tools
 
-And type at the top directory of this distribution:
+Then clone the repository and type following at the top directory:
 
+    git clone https://github.com/keigoi/session-ocaml.git
+    cd session-ocaml
     make
 
 Then you can play with ```session-ocaml```:
