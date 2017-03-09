@@ -147,3 +147,17 @@ module type Adapter = sig
           [`branch of resp * [`left of [`msg of resp * 'v1 * 'p1] |`right of 'p2]] net
   val cls : [`close] net
 end
+
+module Syntax = struct
+  let (>>=) = (>>=)
+  module Session0 = struct
+    let _select = Session0._select
+    let _branch_start = Session0._branch_start
+    let _branch = Session0._branch
+  end
+  module SessionN = struct
+    let _select = SessionN._select
+    let _branch_start = SessionN._branch_start
+    let _branch = SessionN._branch
+  end
+end

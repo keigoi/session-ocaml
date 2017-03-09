@@ -137,3 +137,38 @@ module type Adapter = sig
           [`branch of resp * [`left of [`msg of resp * 'v1 * 'p1] |`right of 'p2]] net
   val cls : [`close] net
 end
+
+module Syntax : sig
+  val (>>=) : ('x,'y,'a) monad -> ('a -> ('y, 'z, 'b) monad) -> ('x,'z,'b) monad
+  module Session0 : sig
+    val _select
+      :  ('p -> 'br)
+      -> (([`branch of 'r1 * 'br],'r1*'r2) sess * 'ss, ('p,'r1*'r2) sess * 'ss, unit) monad
+  
+    val _branch_start
+      :  ('br * ('r1*'r2) -> (([`branch of 'r2 * 'br], 'r1*'r2) sess * 'ss, 'uu,'v) monad)
+      -> (([`branch of 'r2 * 'br], 'r1*'r2) sess * 'ss, 'uu, 'v) monad
+  
+    val _branch
+      :  'p * ('r1*'r2)
+      -> (('p,'r1*'r2) sess * 'ss, 'uu, 'v) monad
+      -> (([`branch of 'r2 * 'br], 'r1*'r2) sess * 'ss, 'uu, 'v) monad    
+  end
+  module SessionN : sig
+    val _select
+      :  (([`branch of 'r1 * 'br],'r1*'r2) sess, ('p,'r1*'r2) sess, 'ss, 'tt) slot
+      -> ('p -> 'br)
+      -> ('ss, 'tt, unit) monad
+  
+    val _branch_start
+        :  (([`branch of 'r2 * 'br], 'r1*'r2) sess, 'x, 'ss, 'xx) slot
+           -> ('br * ('r1*'r2) -> ('ss, 'uu,'v) monad)
+           -> ('ss, 'uu, 'v) monad
+  
+    val _branch
+        :  (([`branch of 'r2 * 'br], 'r1*'r2) sess, ('p,'r1*'r2) sess, 'ss, 'tt1) slot
+           -> 'p * ('r1*'r2)
+           -> ('tt1, 'uu, 'v) monad
+           -> ('ss, 'uu, 'v) monad
+  end
+end
