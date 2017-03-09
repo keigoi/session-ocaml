@@ -27,7 +27,16 @@ let send _ = Obj.magic ()
 let recv = Obj.magic ()
 let _select _ = Obj.magic ()
 let _branch_start _ = Obj.magic ()
-let _branch _ _ = Obj.magic ()
+let _branch _ = Obj.magic ()
 let ignore_msg = Obj.magic ()
 let ignore_branch _ = Obj.magic ()
+
+module Syntax = struct
+  let (>>=) = (>>=)
+  module SessionN = struct
+    let _select = _select
+    let _branch_start = _branch_start
+    let _branch = _branch
+  end
+end
 end

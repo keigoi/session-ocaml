@@ -1,4 +1,4 @@
-include Multiparty
+open Multiparty
 
 type title = string
 type quote = float
@@ -27,11 +27,12 @@ type global =
 let ch : global channel = new_channel ()
 
 module B1 = Local(struct type me = [`Buyer1] and them = [`Buyer2|`Seller] end)
-
+[%%s_syntax_rebind (module B1.Syntax)]
+          
 let buyer1 () =
   B1.connect ch >>
-  B1.send `Seller "Sing" >>
-  B1.recv `Seller >>= fun quot ->
+  B1.send `Seller "Sing - Special Edition" >>
+  let%s quot = B1.recv `Seller in
   (B1.ignore_msg :> ([`Seller],[`Buyer2],'a,'b,'c) B1.msg) >>
   B1.send `Buyer2 (quot /. 2.) >>
   (B1.ignore_branch (fun x -> `quit x) :> ([`Buyer2],[`Seller],'g,'h,'i) B1.branch) >>
@@ -39,32 +40,36 @@ let buyer1 () =
 
 
 module B2 = Local(struct type me = [`Buyer2] and them = [`Buyer1|`Seller] end)
+[%%s_syntax_rebind (module B2.Syntax)]
 
 let buyer2 () =
   B2.connect ch >>
   (B2.ignore_msg :> ([`Buyer1],[`Seller],'a,'b,'c) B2.msg) >>
   (B2.ignore_msg :> ([`Seller],[`Buyer1],'d,'e,'f) B2.msg) >>
-  B2.recv `Seller >>= fun seller_quot ->
-  B2.recv `Buyer1 >>= fun buyer1_quot ->
+  let%s seller_quot = B2.recv `Seller in
+  let%s buyer1_quot = B2.recv `Buyer1 in
   if buyer1_quot < 20.00 then
-    B2._select `Seller (fun x -> `ok x) >>
+    [%select (`Seller) `ok] >>
     B2.send `Seller "Nagoya, Japan" >>
-    B2.recv `Seller >>= fun date ->
+    let%s date = B2.recv `Seller in
     B2.close ()
   else
-    B2._select `Seller (fun x -> `quit x) >>
+    [%select (`Seller) `quit] >>
     B2.close ()
 
 module S = Local(struct type me = [`Seller] and them = [`Buyer1|`Buyer2] end)
+[%%s_syntax_rebind (module S.Syntax)]
 
 let seller () =
   S.connect ch >>
-  S.recv `Buyer1 >>= fun title ->
+  let%s title = S.recv `Buyer1 in
   let price = 15.00 in
   S.send `Buyer1 price >>
   S.send `Buyer2 price >>
-  (S.ignore_msg :> ([`Buyer1],[`Buyer2],'a,'b,'c) S.msg) >>
-  S._branch_start `Buyer2 begin function
-  | `ok(s) -> S._branch s `Buyer2 (S.recv `Buyer2 >>= fun address -> S.send `Buyer2 20170315 >> S.close ())
-  | `quit(s) -> S._branch s `Buyer2 (S.close ())
-  end
+  (S.ignore_msg :> ([`Buyer1],[`Buyer2],'x,'y,'z) S.msg) >>
+  match%branch `Buyer2 with
+  | `ok ->
+     let%s address = S.recv `Buyer2 in
+     S.send `Buyer2 20170315 >>
+     S.close ()
+  | `quit -> S.close ()
