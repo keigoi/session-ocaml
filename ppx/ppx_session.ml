@@ -8,6 +8,13 @@ open Parsetree
 let newname prefix i =
   Printf.sprintf "__ppx_session_%s_%d" prefix i
 
+let freshname =
+  let r = ref 0 in
+  fun () ->
+    let i = !r in
+    r := i + 1;
+    Printf.sprintf "ppx_session_var_%d" i
+  
 let root_module = ref "Session.Syntax"
 
 let longident lid = Ast_helper.Exp.ident (Ast_convenience.lid lid)
@@ -94,7 +101,7 @@ let make_branch_func_types labls =
   let rows =
     List.mapi (fun i labl -> Rtag(labl,[],false,[var ("p"^string_of_int i)])) labls
   in
-  [%type: [%t (variant rows Closed None)] * 'a -> 'b ]
+  [%type: [%t (variant rows Closed None)] * [%t var (freshname ())] -> [%t var (freshname ())] ]
 
 let expression_mapper id mapper exp attrs =
   let pexp_attributes = attrs @ exp.pexp_attributes in
@@ -123,6 +130,9 @@ let expression_mapper id mapper exp attrs =
   (* [%select _n `labl] ==> _select _n (fun x -> `labl(x)) *)
   | "select", Pexp_apply(e1, [(_,{pexp_desc=Pexp_variant (labl, None)})]) ->
      let new_exp = session_select (`SessionN e1) labl in
+     Some (mapper.Ast_mapper.expr mapper {new_exp with pexp_attributes})
+  | "select", Pexp_variant(labl1, Some {pexp_desc=Pexp_variant (labl2, None)}) ->
+     let new_exp = session_select (`SessionN (Ast_helper.Exp.variant labl1 None)) labl2 in
      Some (mapper.Ast_mapper.expr mapper {new_exp with pexp_attributes})
   | "select", _ -> error pexp_loc "Invalid content for extension %select"
      
