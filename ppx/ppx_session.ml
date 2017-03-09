@@ -1,5 +1,4 @@
 (* open Printf *)
-(* open Ast_mapper *)
 (* open Ast_helper *)
 open Asttypes
 open Parsetree
@@ -9,8 +8,12 @@ open Parsetree
 let newname prefix i =
   Printf.sprintf "__ppx_session_%s_%d" prefix i
 
-let monad_bind =
-  [%expr [%e Ast_helper.Exp.ident (Ast_convenience.lid ("Session.>>="))]]
+let root_module = ref "Session.Syntax"
+
+let longident lid = Ast_helper.Exp.ident (Ast_convenience.lid lid)
+
+let monad_bind () =
+  longident (!root_module ^ ".>>=")
 
 let error loc (s:string) = 
   Location.raise_errorf ~loc "%s" s
@@ -30,14 +33,20 @@ let bindbody_of_let exploc bindings exp =
     | binding :: t ->
       let name = (Ast_convenience.evar (newname "let" i)) [@metaloc binding.pvb_expr.pexp_loc] in
       let f = [%expr (fun [%p binding.pvb_pat] -> [%e make i t])] [@metaloc binding.pvb_loc] in
-      let new_exp = [%expr [%e monad_bind] [%e name] [%e f]] [@metaloc exploc] in
+      let new_exp = [%expr [%e monad_bind ()] [%e name] [%e f]] [@metaloc exploc] in
       { new_exp with pexp_attributes = binding.pvb_attributes }
   in
   make 0 bindings
 
-let session_select select_exp labl =
+(* Generates session selection. [%select `labl] ==> _select0 (fun x -> `labl(x))  *)
+let session_select which labl =
+  let selectfunc =
+    match which with
+    | `Session0 -> longident (!root_module ^ ".Session0._select")
+    | `SessionN e -> [%expr [%e longident (!root_module ^ ".SessionN._select")] [%e e]]
+  in
   let new_exp =
-    [%expr [%e select_exp ]
+    [%expr [%e selectfunc ]
            (fun [%p Ast_convenience.pvar "x"] ->
              [%e Ast_helper.Exp.variant labl (Some(Ast_convenience.evar "x"))]) ]
   in new_exp
@@ -52,7 +61,12 @@ let session_select select_exp labl =
   | `fin(p),r -> _branch e0? (p,r) eN)
   : [`lab1 of 'p1 | .. | `labN of 'pN] * 'a -> 'b)
 *)
-let session_branch_clauses branch_exp cases =
+let session_branch_clauses which cases =
+  let branch_exp =
+    match which with
+    | `Session0 -> longident (!root_module ^ ".Session0._branch")
+    | `SessionN e -> [%expr [%e longident (!root_module ^ ".SessionN._branch")] [%e e]]
+  in
   let conv = function
     | {pc_lhs={ppat_desc=Ppat_variant(labl,pat);ppat_loc;ppat_attributes};pc_guard;pc_rhs=rhs_orig} ->
        if pat=None then
@@ -71,6 +85,10 @@ let session_branch_clauses branch_exp cases =
   in
   List.split (List.map conv cases)
 
+let branch_func_name = function
+  | `Session0 -> longident (!root_module ^ ".Session0._branch_start")
+  | `SessionN -> longident (!root_module ^ ".SessionN._branch_start")
+
 let make_branch_func_types labls =
   let open Ast_helper.Typ in
   let rows =
@@ -79,7 +97,6 @@ let make_branch_func_types labls =
   [%type: [%t (variant rows Closed None)] * 'a -> 'b ]
 
 let expression_mapper id mapper exp attrs =
-  let open Ast_mapper in
   let pexp_attributes = attrs @ exp.pexp_attributes in
   let pexp_loc=exp.pexp_loc in
   match id, exp.pexp_desc with
@@ -93,20 +110,20 @@ let expression_mapper id mapper exp attrs =
           (bindings_of_let vbl)
           (bindbody_of_let exp.pexp_loc vbl expression)
       in
-      Some (mapper.expr mapper { new_exp with pexp_attributes })
+      Some (mapper.Ast_mapper.expr mapper { new_exp with pexp_attributes })
   | "s", _ -> error pexp_loc "Invalid content for extension %s"
 
   (* session selection *)
   (* [%select0 `labl] ==> _select (fun x -> `labl(x)) *)
   | "select0", Pexp_variant (labl, None) ->
-     let new_exp = session_select [%expr Session.Session0._select ] labl in
-     Some (mapper.expr mapper {new_exp with pexp_attributes})
+     let new_exp = session_select `Session0 labl in
+     Some (mapper.Ast_mapper.expr mapper {new_exp with pexp_attributes})
   | "select0", _ -> error pexp_loc "Invalid content for extension %select0"
 
   (* [%select _n `labl] ==> _select _n (fun x -> `labl(x)) *)
   | "select", Pexp_apply(e1, [(_,{pexp_desc=Pexp_variant (labl, None)})]) ->
-     let new_exp = session_select [%expr Session.SessionN._select [%e e1] ] labl in
-     Some (mapper.expr mapper {new_exp with pexp_attributes})
+     let new_exp = session_select (`SessionN e1) labl in
+     Some (mapper.Ast_mapper.expr mapper {new_exp with pexp_attributes})
   | "select", _ -> error pexp_loc "Invalid content for extension %select"
      
   (* session branching
@@ -118,12 +135,12 @@ let expression_mapper id mapper exp attrs =
      : [`lab1 of 'p1 | .. | `labN of 'pN] * 'a -> 'b)
   *)
   | "branch0", Pexp_match ({pexp_desc=Pexp_construct({txt=Longident.Lident("()")},None)}, cases) ->
-     let cases, labls = session_branch_clauses [%expr Session.Session0._branch] cases in
+     let cases, labls = session_branch_clauses `Session0 cases in
      let new_typ = make_branch_func_types labls in
      let new_exp =
-       [%expr Session.Session0._branch_start ([%e Ast_helper.Exp.function_ cases] : [%t new_typ ])]
+       [%expr [%e branch_func_name `Session0] ([%e Ast_helper.Exp.function_ cases] : [%t new_typ ])]
     in
-    Some (mapper.expr mapper {new_exp with pexp_attributes})
+    Some (mapper.Ast_mapper.expr mapper {new_exp with pexp_attributes})
   | "branch0", _ -> error pexp_loc "Invalid content for extension %branch0"
 
   (*
@@ -136,26 +153,38 @@ let expression_mapper id mapper exp attrs =
   *)
   | "branch", Pexp_match (e0, cases) ->
      let open Ast_helper.Typ in
-     let cases, labls = session_branch_clauses [%expr Session.SessionN._branch [%e e0]] cases in
+     let cases, labls = session_branch_clauses (`SessionN e0) cases in
      let new_typ = make_branch_func_types labls in
      let new_exp =
-       [%expr Session.SessionN._branch_start [%e e0]
+       [%expr [%e branch_func_name `SessionN] [%e e0]
               ([%e Ast_helper.Exp.function_ cases] : [%t new_typ ])]
     in
-    Some (mapper.expr mapper {new_exp with pexp_attributes})
+    Some (mapper.Ast_mapper.expr mapper {new_exp with pexp_attributes})
   | "branch", _ -> error pexp_loc "Invalid content for extension %branch"
 
   | _ -> None
 
+let rebind_module modexpr =
+  match modexpr.pmod_desc with
+  | Pmod_ident {txt = id} -> root_module := String.concat "." (Longident.flatten id)
+  | _ -> error modexpr.pmod_loc "Use (module M) here."
+  
+       
 let mapper_fun _ =
   let open Ast_mapper in
   let expr mapper outer =
   match outer.pexp_desc with
-  | Pexp_extension ({ txt = id; loc }, PStr [{ pstr_desc = Pstr_eval (inner, attrs) }]) ->
+  | Pexp_extension ({ txt = id }, PStr [{ pstr_desc = Pstr_eval (inner, attrs) }]) ->
      begin match expression_mapper id mapper inner attrs with
      | Some exp -> exp
      | None -> default_mapper.expr mapper outer
      end
   | _ -> default_mapper.expr mapper outer
-  in  
-  {default_mapper with expr}
+  and structure_item mapper outer =
+    match outer.pstr_desc with
+    | Pstr_extension (({ txt = "s_syntax_rebind" }, PStr [{ pstr_desc = Pstr_eval ({pexp_desc=Pexp_pack modexpr}, _) }]),_) ->
+       rebind_module modexpr;
+       {outer with pstr_desc = Pstr_eval ([%expr ()],[])} (* replace with () *)
+    | _ -> default_mapper.structure_item mapper outer
+  in
+  {default_mapper with expr; structure_item}
