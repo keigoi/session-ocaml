@@ -49,12 +49,12 @@ let buyer2 () =
   let%s seller_quot = B2.recv `Seller in
   let%s buyer1_quot = B2.recv `Buyer1 in
   if buyer1_quot < 20.00 then
-    [%select (`Seller) `ok] >>
+    [%select `Seller `ok] >>
     B2.send `Seller "Nagoya, Japan" >>
     let%s date = B2.recv `Seller in
     B2.close ()
   else
-    [%select (`Seller) `quit] >>
+    [%select `Seller `quit] >>
     B2.close ()
 
 module S = Local(struct type me = [`Seller] and them = [`Buyer1|`Buyer2] end)
@@ -66,7 +66,7 @@ let seller () =
   let price = 15.00 in
   S.send `Buyer1 price >>
   S.send `Buyer2 price >>
-  (S.ignore_msg :> ([`Buyer1],[`Buyer2],'x,'y,'z) S.msg) >>
+  (S.ignore_msg :> ([`Buyer1],[`Buyer2],'a,'b,'c) S.msg) >>
   match%branch `Buyer2 with
   | `ok ->
      let%s address = S.recv `Buyer2 in
