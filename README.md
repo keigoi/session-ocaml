@@ -20,6 +20,7 @@ Then clone the repository and type following at the top directory:
     git clone https://github.com/keigoi/session-ocaml.git
     cd session-ocaml
     make
+    make install
 
 Then you can play with ```session-ocaml```:
 
@@ -31,7 +32,8 @@ Argument ```-short-paths``` is optional (it makes ```ocaml``` show the shortest 
 Note that [.ocamlinit](examples/.ocamlinit) file automatically pre-loads all required packages into OCaml toplevel and sets -rectypes option.
 It also does ```open Session```.
 
-If things seem broken, try ```git clean -fdx``` then ```make``` (WARNING: this command erases all files except the original distribution):
+If things seem broken, try ```git clean -fdx```then ```make``` (WARNING: this command erases all files except the original distribution).
+Also, you can uninstall manually by ```ocamlfind remove session-ocaml```.
 
 ## Example
 
@@ -39,21 +41,6 @@ If things seem broken, try ```git clean -fdx``` then ```make``` (WARNING: this c
 * [A single session 2](examples/ex_single2.ml).
 * [Multiple sessions 1](examples/ex_multi1.ml).
 * [SMTP protocol](examples/smtp.ml).
-
-To compile examples, you need to install ```session-ocaml``` by:
-
-	ocaml setup.ml -install
-
-Then, you can build them by typing ```make``` inside ```examples``` directory.
-
-To uninstall ```session-ocaml```, type:
-
-	ocaml setup.ml -uninstall
-
-Or,
-
-	ocamlfind remove session-ocaml
-
 
 # Macro for branching / selection
 
