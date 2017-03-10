@@ -19,6 +19,7 @@ Then clone the repository and type following at the top directory:
 
     git clone https://github.com/keigoi/session-ocaml.git
     cd session-ocaml
+    ./configure --prefix=$(dirname `which ocaml`)/..
     make
     make install
 
