@@ -15,10 +15,11 @@ Library "session-ocaml"
     Session, UnixAdapter, Multiparty
   InternalModules:
     Channel,
-    Monitor
+    Monitor,
+    Myscribble
   ByteOpt: -rectypes
   NativeOpt: -rectypes
-  BuildDepends: threads, str
+  BuildDepends: threads, str, scribble, compiler-libs, ppx_tools.metaquot
 
 Library ppx
   Path: ppx

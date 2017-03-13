@@ -1,9 +1,9 @@
 # OASIS_START
-# DO NOT EDIT (digest: c9e26f5a07cf09a35ec4f0e4d9d3845f)
+# DO NOT EDIT (digest: 354ae39ccb7b47779814bf187658698a)
 version = "0.1"
 description =
 "A concurrent / distributed programming with protocol typing, based on Session Types."
-requires = "threads str"
+requires = "threads str scribble compiler-libs ppx_tools.metaquot"
 archive(byte) = "session-ocaml.cma"
 archive(byte, plugin) = "session-ocaml.cma"
 archive(native) = "session-ocaml.cmxa"

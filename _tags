@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: dbdb43811dd508b5734079945a01f141)
+# DO NOT EDIT (digest: eecfa3b6bed278ea14df8d0d827c8d8a)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -20,6 +20,9 @@ true: annot, bin_annot
 <lib/*.ml{,i,y}>: oasis_library_session_ocaml_byte
 <lib/session-ocaml.{cma,cmxa}>: oasis_library_session_ocaml_native
 <lib/*.ml{,i,y}>: oasis_library_session_ocaml_native
+<lib/*.ml{,i,y}>: pkg_compiler-libs
+<lib/*.ml{,i,y}>: pkg_ppx_tools.metaquot
+<lib/*.ml{,i,y}>: pkg_scribble
 <lib/*.ml{,i,y}>: pkg_str
 <lib/*.ml{,i,y}>: pkg_threads
 # Library ppx
