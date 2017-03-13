@@ -26,8 +26,9 @@ Then clone the repository and type following at the top directory:
 Then you can play with ```session-ocaml```:
 
     cd examples
-    make                # build examples
-    ocaml -short-paths  # play with OCaml toplevel (utop will also do) 
+    make                       # build examples
+    rlwrap ocaml -short-paths  # play with OCaml toplevel (utop will also do).
+                               # rlwrap is a readline wrapper (recommended)
 
 Argument ```-short-paths``` is optional (it makes ```ocaml``` show the shortest path for each type).
 Note that [.ocamlinit](examples/.ocamlinit) file automatically pre-loads all required packages into OCaml toplevel and sets -rectypes option.
