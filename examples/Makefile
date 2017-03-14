@@ -11,13 +11,13 @@ EXAMPLES_BYTE = $(EXAMPLES:%=%.byte)
 all: $(EXAMPLES_BYTE)
 
 ex_single2.byte: ex_single1.cmo ex_single2.cmo
-	$(OCAMLC) -linkpkg -o $@ $<
+	$(OCAMLC) -linkpkg -o $@ $^
 
 ex_multi1.byte: ex_single1.cmo ex_single2.cmo ex_multi1.cmo
-	$(OCAMLC) -linkpkg -o $@ $<
+	$(OCAMLC) -linkpkg -o $@ $^
 
 %.byte: %.cmo
-	$(OCAMLC) -linkpkg -o $@ $<
+	$(OCAMLC) -linkpkg -o $@ $^
 
 
 # Common rules

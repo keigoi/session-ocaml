@@ -15,11 +15,16 @@ let rec main_thread () =
   close _1 >>= main_thread;;
 
 (* The worker thread *)
-let rec worker_thread () =
-  accept deleg_ch ~bindto:_1 >> deleg_recv _1 ~bindto:_0 >>
-  close _1 >>
-  arith_server () >>= worker_thread;;
+let rec worker_thread i () =
+  let%s _ = accept deleg_ch ~bindto:_1 >> deleg_recv _1 ~bindto:_0 in
+  (Printf.printf "worker %d\n" i;
+  close _1) >>
+  arith_server () >>= worker_thread i;;
 
 (* Invokation of threads *)
-for i = 0 to 5 do ignore @@ Thread.create (run worker_thread) () done;
-run main_thread ();;
+for i = 0 to 5 do ignore @@ Thread.create (run @@ worker_thread i) () done;
+Thread.create (run main_thread) ();;
+
+for i = 0 to 10 do
+  Session0.connect_ arith_ch arith_client ()
+done;;
