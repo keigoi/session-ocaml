@@ -1,0 +1,21 @@
+global protocol Game(role A, role B, role C)
+{
+	// Arbitrary for now
+	rec X
+	{
+		choice at A
+		{
+			1() from A to B;
+			1() from B to C;
+			1() from C to A;
+			continue X;
+		}
+		or
+		{
+			2() from A to B;
+			2() from B to C;
+			2() from C to A;
+		}
+	}
+}
+

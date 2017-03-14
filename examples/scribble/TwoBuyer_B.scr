@@ -1,0 +1,11 @@
+
+local protocol TwoBuyer at B (A,B,S) {
+  quote (int ) from S;
+  quoteByTwo (int ) from A;
+  choice at B {
+    ok (Address ) to S;
+     (Date ) from S;
+    } or {
+    quit () to S;
+    }
+  }

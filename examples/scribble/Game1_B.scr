@@ -1,0 +1,11 @@
+
+local protocol Game at B (A,B,C) {
+  rec x0 {
+    choice at A {
+      1 () from A;
+      1 () to C;
+      continue x0;} or {
+      2 () from A;
+      2 () to C;
+      }
+    }}

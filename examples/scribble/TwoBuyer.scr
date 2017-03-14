@@ -1,0 +1,17 @@
+global protocol TwoBuyer(A, B, S)
+{
+	title(String) from A to S;
+	//quote(int) from S to A, B;  // EFSM building for multicast not currently supported
+	quote(int) from S to A;
+	quote(int) from S to B;
+	quoteByTwo(int) from A to B;
+	choice at B
+	{
+		ok(Address) from B to S;
+		(Date) from S to B;
+	}
+	or
+	{
+		quit() from B to S;
+	}
+}

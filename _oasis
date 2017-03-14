@@ -15,8 +15,7 @@ Library "session-ocaml"
     Session, UnixAdapter, Multiparty
   InternalModules:
     Channel,
-    Monitor,
-    Myscribble
+    Monitor
   ByteOpt: -rectypes
   NativeOpt: -rectypes
   BuildDepends: threads, str, scribble, compiler-libs, ppx_tools.metaquot
@@ -37,4 +36,13 @@ Executable ppx_session
   BuildTools: ocamlbuild
   MainIs: ppx_session_ex.ml
   BuildDepends: compiler-libs.common, ppx_tools.metaquot
+  CompiledObject: best
+
+Executable myscribble
+  Path: src
+  BuildTools: ocamlbuild
+  MainIs: myscribble_ex.ml
+  ByteOpt: -rectypes
+  NativeOpt: -rectypes
+  BuildDepends: compiler-libs.common, ppx_tools.metaquot, session-ocaml
   CompiledObject: best

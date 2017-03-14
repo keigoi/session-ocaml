@@ -1,0 +1,5 @@
+
+local protocol TwoBuyer at A (A,B,S) {
+  title (String ) to S;
+  quote (int ) from S;
+  quoteByTwo (int ) to B;}

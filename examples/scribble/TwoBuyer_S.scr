@@ -1,0 +1,12 @@
+
+local protocol TwoBuyer at S (A,B,S) {
+  title (String ) from A;
+  quote (int ) to A;
+  quote (int ) to B;
+  choice at B {
+    ok (Address ) from B;
+     (Date ) to B;
+    } or {
+    quit () from B;
+    }
+  }
