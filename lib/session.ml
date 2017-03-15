@@ -187,7 +187,7 @@ module Session0 = struct
     _branch_start
       (function
        | `left(p),q -> _branch (p,q) (f ())
-       | `right(p),q -> _branch (p,q) (f ()))
+       | `right(p),q -> _branch (p,q) (g ()))
 end
 
 type 'a parse_result =

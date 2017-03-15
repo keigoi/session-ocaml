@@ -75,6 +75,6 @@ module TcpSession = struct
     in
     let in_ch,out_ch = connect () in
     let ch = Session.new_channel () in
-    ignore @@ Thread.create (Session0.accept_ ch adapter) {in_ch;out_ch;in_buf=""};
+    ignore @@ Session0.accept_ ch adapter {in_ch;out_ch;in_buf=""};
     ch
 end
