@@ -89,7 +89,7 @@ let smtp_client hostport from to_ mailbody =
                        (print_endline "ERROR:"; List.iter print_endline msg; send QUIT) >> close ()) end ()
 
 
-let () =
+let _ : unit Lwt.t =
   if Array.length Sys.argv <> 5 then begin
       print_endline ("Usage: " ^ Sys.argv.(0) ^ " host:port from to body");
       exit 1

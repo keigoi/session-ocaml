@@ -3,7 +3,7 @@ open Session
 let bufsize = 4096
 
 type raw_chan = {in_ch:in_channel; in_buf:string; out_ch:out_channel}
-type 'p net = raw_chan -> (('p, serv) sess * all_empty, all_empty, unit) monad
+type 'p net = raw_chan -> (('p, serv) sess, empty, unit) monad
 
 let consume (read:string->'v parse_result) {in_ch;in_buf} =
   let consume_buf : string -> 'v parse_result = function
