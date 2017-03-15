@@ -1,6 +1,6 @@
 FLG -rectypes
 B +threads
-PKG threads unix compiler-libs.common ppx_tools ppx_tools.metaquot scribble
+PKG threads unix compiler-libs.common ppx_tools ppx_tools.metaquot lwt scribble
 
 S lib
 S ppx

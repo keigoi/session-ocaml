@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: a36961fe24657833c849470e6f275554) *)
+(* DO NOT EDIT (digest: 19b8099acc9026d6379cce402455cadb) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -887,28 +887,6 @@ let package_default =
      lib_c = [];
      flags =
        [
-          (["oasis_library_session_ocaml_byte"; "ocaml"; "link"; "byte"],
-            [(OASISExpr.EBool true, S [A "-rectypes"])]);
-          (["oasis_library_session_ocaml_native"; "ocaml"; "link"; "native"],
-            [(OASISExpr.EBool true, S [A "-rectypes"])]);
-          (["oasis_library_session_ocaml_byte"; "ocaml"; "ocamldep"; "byte"],
-            [(OASISExpr.EBool true, S [A "-rectypes"])]);
-          ([
-              "oasis_library_session_ocaml_native";
-              "ocaml";
-              "ocamldep";
-              "native"
-           ],
-            [(OASISExpr.EBool true, S [A "-rectypes"])]);
-          (["oasis_library_session_ocaml_byte"; "ocaml"; "compile"; "byte"],
-            [(OASISExpr.EBool true, S [A "-rectypes"])]);
-          ([
-              "oasis_library_session_ocaml_native";
-              "ocaml";
-              "compile";
-              "native"
-           ],
-            [(OASISExpr.EBool true, S [A "-rectypes"])]);
           (["oasis_executable_myscribble_byte"; "ocaml"; "link"; "byte"],
             [(OASISExpr.EBool true, S [A "-rectypes"])]);
           (["oasis_executable_myscribble_native"; "ocaml"; "link"; "native"],
@@ -940,6 +918,6 @@ let conf = {MyOCamlbuildFindlib.no_automatic_syntax = false}
 
 let dispatch_default = MyOCamlbuildBase.dispatch_default conf package_default;;
 
-# 944 "myocamlbuild.ml"
+# 922 "myocamlbuild.ml"
 (* OASIS_STOP *)
 Ocamlbuild_plugin.dispatch dispatch_default;;

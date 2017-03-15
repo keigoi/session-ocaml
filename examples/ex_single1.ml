@@ -5,7 +5,7 @@ open Session0
 let neg_server () =
   let%s x = recv () in
   send (-x) >>
-    close ()
+  close ()
 
 let neg_client () =
   send 12345 >>
@@ -16,7 +16,7 @@ let neg_client () =
 let neg_ch = new_channel ()
                          
 let _ =
-  ignore @@ Thread.create
-              (accept_ neg_ch neg_server) ();
-  connect_ neg_ch neg_client ()
+  ignore @@ Lwt.join [
+      accept_ neg_ch neg_server ();
+      connect_ neg_ch neg_client ()]
 

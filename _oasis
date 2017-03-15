@@ -13,12 +13,7 @@ Library "session-ocaml"
   BuildTools: ocamlbuild
   Modules:
     Session, UnixAdapter, Multiparty
-  InternalModules:
-    Channel,
-    Monitor
-  ByteOpt: -rectypes
-  NativeOpt: -rectypes
-  BuildDepends: threads, str, scribble, compiler-libs, ppx_tools.metaquot
+  BuildDepends: threads, str, scribble, lwt, compiler-libs, ppx_tools.metaquot
 
 Library ppx
   Path: ppx

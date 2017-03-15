@@ -9,6 +9,7 @@ let () =
 #require "threads";;
 #require "str";;
 #require "scribble";;
+#require "lwt.simple-top";;
 #rectypes;;
 
 (* Load each lib provided by this project. *)

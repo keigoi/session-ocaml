@@ -99,8 +99,8 @@ let ctm_ch = new_channel ()
 let svc_ch = new_channel ()
 
 let _ =
-  ignore @@ Thread.create (run service) svc_ch;
-  ignore @@ Thread.create (run (agency ctm_ch)) svc_ch;
-  run customer ctm_ch
+  ignore @@ run service svc_ch;
+  ignore @@ run (agency ctm_ch) svc_ch;
+  ignore @@ run customer ctm_ch
 
   

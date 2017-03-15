@@ -1,7 +1,5 @@
 (* Single-session example with branching and selection on arbitrary labels. *)
 
-(* This will be rewritten with macros ```match%branch0``` and ```[%select]```. See README.md *)
-
 open Session
 open Session0
        
@@ -36,6 +34,6 @@ let arith_client () =
 let arith_ch = new_channel ()
                            
 let _ =
-  ignore @@ Thread.create
-    (accept_ arith_ch arith_server) ();
-  connect_ arith_ch arith_client ()
+  ignore @@ Lwt.join [
+      accept_ arith_ch arith_server ();
+      connect_ arith_ch arith_client ()]

@@ -1,15 +1,15 @@
 
 (* empty slots *)
 type empty
-type all_empty = empty * 'a as 'a
+type all_empty = [`slot of empty * 'a] as 'a
 
 (* lenses on slots *)
 type ('a,'b,'ss,'tt) slot
 
-val _0 : ('a, 'b, ('a * 'ss), ('b * 'ss)) slot
-val _1 : ('a, 'b, ('s0 * ('a * 'ss)), ('s0 * ('b * 'ss))) slot
-val _2 : ('a, 'b, ('s0 * ('s1 * ('a * 'ss))), ('s0 * ('s1 * ('b * 'ss)))) slot
-val _3 : ('a, 'b, ('s0 * ('s1 * ('s2 * ('a * 'ss)))), ('s0 * ('s1 * ('s2 * ('b * 'ss))))) slot
+val _0 : ('a, 'b, [`slot of 'a * 'ss], [`slot of 'b * 'ss]) slot
+val _1 : ('a, 'b, [`slot of 's0 * [`slot of 'a * 'ss]], [`slot of 's0 * [`slot of 'b * 'ss]]) slot
+val _2 : ('a, 'b, [`slot of 's0 * [`slot of 's1 * [`slot of 'a * 'ss]]], [`slot of 's0 * [`slot of 's1 * [`slot of 'b * 'ss]]]) slot
+val _3 : ('a, 'b, [`slot of 's0 * [`slot of 's1 * [`slot of 's2 * [`slot of 'a * 'ss]]]], [`slot of 's0 * [`slot of 's1 * [`slot of 's2 * [`slot of 'b * 'ss]]]]) slot
 
 (* parameterized monads *)
 type ('x,'y,'a) monad
@@ -17,9 +17,10 @@ type ('x,'y,'a) monad
 val return : 'v -> ('x,'x,'v) monad
 val (>>=) : ('x,'y,'a) monad -> ('a -> ('y, 'z, 'b) monad) -> ('x,'z,'b) monad
 val (>>) : ('x,'y,'a) monad -> ('y,'z,'b) monad -> ('x,'z,'b) monad
-
-val run : ('a -> (all_empty, all_empty, 'b) monad) -> 'a -> 'b
-val run_ : ((all_empty, all_empty, 'b) monad) -> 'b
+val lift : 'v Lwt.t -> ('x,'x,'v) monad
+  
+val run : ('a -> (all_empty, all_empty, 'b) monad) -> 'a -> 'b Lwt.t
+val run_ : ((all_empty, all_empty, 'b) monad) -> 'b Lwt.t
 
 (* channels *)
 type 'p channel
@@ -36,40 +37,41 @@ type ('p, 'q) sess
 
 module Session0 : sig
 
-  val accept_ : 'p channel -> ('v -> (('p,serv) sess * all_empty,  all_empty, 'w) monad) -> 'v  -> 'w
-  val connect_ : 'p channel -> ('v -> (('p,cli) sess * all_empty,  all_empty, 'w) monad) -> 'v  -> 'w
+  val accept_ : 'p channel -> ('v -> (('p,serv) sess,  empty, 'w) monad) -> 'v  -> 'w Lwt.t
+  val connect_ : 'p channel -> ('v -> (('p,cli) sess,  empty, 'w) monad) -> 'v  -> 'w Lwt.t
 
-  val close : unit -> (([`close], 'r1*'r2) sess * 'ss, empty * 'ss, unit) monad
-  val send : 'v -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess * 'ss, ('p, 'r1*'r2) sess * 'ss, unit) monad
-  val recv : unit -> (([`msg of 'r2 * 'v * 'p], 'r1*'r2) sess * 'ss, ('p, 'r1*'r2) sess * 'ss, 'v) monad
+  val close : unit -> (([`close], 'r1*'r2) sess, empty, unit) monad
+  val send : 'v -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, unit) monad
+  val recv : unit -> (([`msg of 'r2 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'v) monad
 
   val branch2
-    :  (unit -> (('p1, 'r1*'r2) sess * 'ss, 'uu, 'a) monad)
-    -> (unit -> (('p2, 'r1*'r2) sess * 'ss, 'uu, 'a) monad)
-    -> (([`branch of 'r2 * [`left of 'p1 | `right of 'p2]], 'r1*'r2) sess * 'ss, 'uu, 'a) monad
+    :  (unit -> (('p1, 'r1*'r2) sess, 'u, 'a) monad)
+    -> (unit -> (('p2, 'r1*'r2) sess, 'u, 'a) monad)
+    -> (([`branch of 'r2 * [`left of 'p1 | `right of 'p2]], 'r1*'r2) sess, 'u, 'a) monad
 
   val select_left
-    : unit -> (([`branch of 'r1 * [>`left of 's1]], 'r1*'r2) sess * 'ss, ('s1, 'r1*'r2) sess * 'ss, unit) monad
+    : unit -> (([`branch of 'r1 * [>`left of 's1]], 'r1*'r2) sess, ('s1, 'r1*'r2) sess, unit) monad
 
   val select_right
-    : unit -> (([`branch of 'r1 * [>`right of 's2]], 'r1*'r2) sess * 'ss, ('s2, 'r1*'r2) sess * 'ss, unit) monad
+    : unit -> (([`branch of 'r1 * [>`right of 's2]], 'r1*'r2) sess, ('s2, 'r1*'r2) sess, unit) monad
 
   val _select
     :  ('p -> 'br)
-    -> (([`branch of 'r1 * 'br],'r1*'r2) sess * 'ss, ('p,'r1*'r2) sess * 'ss, unit) monad
+    -> (([`branch of 'r1 * 'br],'r1*'r2) sess, ('p,'r1*'r2) sess, unit) monad
 
   val _branch_start
-    :  ('br * ('r1*'r2) -> (([`branch of 'r2 * 'br], 'r1*'r2) sess * 'ss, 'uu,'v) monad)
-    -> (([`branch of 'r2 * 'br], 'r1*'r2) sess * 'ss, 'uu, 'v) monad
+    :  ('br * ('r1*'r2) -> (([`branch of 'r2 * 'br], 'r1*'r2) sess, 'u,'v) monad)
+    -> (([`branch of 'r2 * 'br], 'r1*'r2) sess, 'u, 'v) monad
 
   val _branch
     :  'p * ('r1*'r2)
-    -> (('p,'r1*'r2) sess * 'ss, 'uu, 'v) monad
-    -> (([`branch of 'r2 * 'br], 'r1*'r2) sess * 'ss, 'uu, 'v) monad
+    -> (('p,'r1*'r2) sess, 'u, 'v) monad
+    -> (([`branch of 'r2 * 'br], 'r1*'r2) sess, 'u, 'v) monad
 end
 
 
 module SessionN : sig
+  val run0 : ('x,'y,'v) monad -> at:('x,'y,'ss,'tt) slot -> ('ss,'tt,'v) monad
 
   val accept : 'p channel -> bindto:(empty, ('p,serv) sess, 'ss, 'tt) slot -> ('ss, 'tt, unit) monad
   val connect : 'p channel -> bindto:(empty, ('p,cli) sess, 'ss, 'tt) slot -> ('ss, 'tt, unit) monad
@@ -121,38 +123,38 @@ module SessionN : sig
 
 end
 
-type 'a parse_result =
-  [`Partial of (string option -> 'a parse_result) (* `Partial f. invariant: (f None) may not return Partial  *)
-  |`Done    of 'a * string
-  |`Fail of string]
+(* type 'a parse_result = *)
+(*   [`Partial of (string option -> 'a parse_result) (\* `Partial f. invariant: (f None) may not return Partial  *\) *)
+(*   |`Done    of 'a * string *)
+(*   |`Fail of string] *)
 
-module type Adapter = sig
-  type raw_chan
-  type 'p net = raw_chan -> (('p, serv) sess * all_empty, all_empty, unit) monad
-  val req : ('v -> string) -> 'p net -> [`msg of req * 'v * 'p] net
-  val resp : (string -> 'v parse_result) -> 'p net -> [`msg of resp * 'v * 'p] net
-  val sel : left:'p1 net -> right:'p2 net ->
-          [`branch of req * [`left of 'p1|`right of 'p2]] net
-  val bra : left:((string -> 'v1 parse_result) * 'p1 net) -> right:'p2 net ->
-          [`branch of resp * [`left of [`msg of resp * 'v1 * 'p1] |`right of 'p2]] net
-  val cls : [`close] net
-end
+(* module type Adapter = sig *)
+(*   type raw_chan *)
+(*   type 'p net = raw_chan -> (('p, serv) sess * all_empty, all_empty, unit) monad *)
+(*   val req : ('v -> string) -> 'p net -> [`msg of req * 'v * 'p] net *)
+(*   val resp : (string -> 'v parse_result) -> 'p net -> [`msg of resp * 'v * 'p] net *)
+(*   val sel : left:'p1 net -> right:'p2 net -> *)
+(*           [`branch of req * [`left of 'p1|`right of 'p2]] net *)
+(*   val bra : left:((string -> 'v1 parse_result) * 'p1 net) -> right:'p2 net -> *)
+(*           [`branch of resp * [`left of [`msg of resp * 'v1 * 'p1] |`right of 'p2]] net *)
+(*   val cls : [`close] net *)
+(* end *)
 
 module Syntax : sig
   val (>>=) : ('x,'y,'a) monad -> ('a -> ('y, 'z, 'b) monad) -> ('x,'z,'b) monad
   module Session0 : sig
     val _select
       :  ('p -> 'br)
-      -> (([`branch of 'r1 * 'br],'r1*'r2) sess * 'ss, ('p,'r1*'r2) sess * 'ss, unit) monad
+      -> (([`branch of 'r1 * 'br],'r1*'r2) sess, ('p,'r1*'r2) sess, unit) monad
   
     val _branch_start
-      :  ('br * ('r1*'r2) -> (([`branch of 'r2 * 'br], 'r1*'r2) sess * 'ss, 'uu,'v) monad)
-      -> (([`branch of 'r2 * 'br], 'r1*'r2) sess * 'ss, 'uu, 'v) monad
+      :  ('br * ('r1*'r2) -> (([`branch of 'r2 * 'br], 'r1*'r2) sess, 'u,'v) monad)
+      -> (([`branch of 'r2 * 'br], 'r1*'r2) sess, 'u, 'v) monad
   
     val _branch
       :  'p * ('r1*'r2)
-      -> (('p,'r1*'r2) sess * 'ss, 'uu, 'v) monad
-      -> (([`branch of 'r2 * 'br], 'r1*'r2) sess * 'ss, 'uu, 'v) monad    
+      -> (('p,'r1*'r2) sess, 'u, 'v) monad
+      -> (([`branch of 'r2 * 'br], 'r1*'r2) sess, 'u, 'v) monad
   end
   module SessionN : sig
     val _select
