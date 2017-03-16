@@ -34,6 +34,6 @@ let arith_client () =
 let arith_ch = new_channel ()
                            
 let _ =
-  ignore @@ Lwt.join [
+  Lwt_main.run @@ Lwt.join [
       accept_ arith_ch arith_server ();
       connect_ arith_ch arith_client ()]

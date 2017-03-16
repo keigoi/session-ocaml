@@ -1,6 +1,7 @@
 # OASIS_START
-# DO NOT EDIT (digest: c85b100fe9576123292d9ad26c8cc890)
+# DO NOT EDIT (digest: c7dfa6ddfbf7213936525441ebe39381)
 Session
 UnixAdapter
 Multiparty
+UnsafeMVar
 # OASIS_STOP

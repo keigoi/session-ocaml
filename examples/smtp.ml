@@ -72,7 +72,7 @@ let escape : string -> string list = Str.split (Str.regexp "\n") (*FIXME*)
 
 open Session0
 let smtp_client hostport from to_ mailbody =
-  let ch : smtp channel = TcpSession.new_channel smtp_adapter hostport in
+  Lwt.bind (TcpSession.new_channel smtp_adapter hostport) begin fun (ch : smtp channel) ->
   connect_ ch begin fun () ->
     let%s R200 s = recv () in
     send (EHLO("me.example.com"))    >>  let%s R200 _ = recv () in
@@ -87,11 +87,12 @@ let smtp_client hostport from to_ mailbody =
                        select_right () >> send QUIT >> close ())
             (fun () -> let%s R500 msg = recv () in (* a recipient is rejected *)
                        (print_endline "ERROR:"; List.iter print_endline msg; send QUIT) >> close ()) end ()
+  end
 
 
-let _ : unit Lwt.t =
+let _ : unit =
   if Array.length Sys.argv <> 5 then begin
       print_endline ("Usage: " ^ Sys.argv.(0) ^ " host:port from to body");
       exit 1
     end;
-  smtp_client Sys.argv.(1) Sys.argv.(2) Sys.argv.(3) Sys.argv.(4)
+  Lwt_main.run (smtp_client Sys.argv.(1) Sys.argv.(2) Sys.argv.(3) Sys.argv.(4))

@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 0e6efc6c5910a29dc5035b081cf46922)
+# DO NOT EDIT (digest: e88865782aae8b782e16718121e8b3df)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -17,7 +17,7 @@ true: annot, bin_annot
 # Library session-ocaml
 "lib/session-ocaml.cmxs": use_session-ocaml
 <lib/*.ml{,i,y}>: pkg_compiler-libs
-<lib/*.ml{,i,y}>: pkg_lwt
+<lib/*.ml{,i,y}>: pkg_lwt.unix
 <lib/*.ml{,i,y}>: pkg_ppx_tools.metaquot
 <lib/*.ml{,i,y}>: pkg_scribble
 <lib/*.ml{,i,y}>: pkg_str
@@ -37,7 +37,7 @@ true: annot, bin_annot
 <src/*.ml{,i,y}>: oasis_executable_myscribble_native
 <src/myscribble_ex.{native,byte}>: pkg_compiler-libs
 <src/myscribble_ex.{native,byte}>: pkg_compiler-libs.common
-<src/myscribble_ex.{native,byte}>: pkg_lwt
+<src/myscribble_ex.{native,byte}>: pkg_lwt.unix
 <src/myscribble_ex.{native,byte}>: pkg_ppx_tools.metaquot
 <src/myscribble_ex.{native,byte}>: pkg_scribble
 <src/myscribble_ex.{native,byte}>: pkg_str
@@ -45,7 +45,7 @@ true: annot, bin_annot
 <src/myscribble_ex.{native,byte}>: use_session-ocaml
 <src/*.ml{,i,y}>: pkg_compiler-libs
 <src/*.ml{,i,y}>: pkg_compiler-libs.common
-<src/*.ml{,i,y}>: pkg_lwt
+<src/*.ml{,i,y}>: pkg_lwt.unix
 <src/*.ml{,i,y}>: pkg_ppx_tools.metaquot
 <src/*.ml{,i,y}>: pkg_scribble
 <src/*.ml{,i,y}>: pkg_str

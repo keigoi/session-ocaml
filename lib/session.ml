@@ -28,18 +28,6 @@ type resp = Resp
 type cli = req * resp
 type serv = resp * req
 
-module UnsafeMVar : sig
-  type t
-  val create_empty : unit -> t
-  val put : t -> 'a -> unit Lwt.t
-  val take : t -> 'a Lwt.t
-end = struct
-  type t = unit Lwt_mvar.t
-  let create_empty () = Obj.magic (Lwt_mvar.create_empty ())
-  let put m v = Lwt_mvar.put m (Obj.magic v)
-  let take m = Lwt_mvar.take (Obj.magic m)
-end
-
 type mvars = {up:UnsafeMVar.t; down:UnsafeMVar.t}
 
 type ('p, 'r) sess = mvars

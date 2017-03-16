@@ -26,5 +26,5 @@ for i = 0 to 5 do ignore @@ run (worker_thread i) () done;
 ignore @@ run main_thread ();;
 
 for i = 0 to 10 do
-  ignore (Session0.connect_ arith_ch arith_client ())
+  Lwt_main.run (Session0.connect_ arith_ch arith_client ())
 done;;

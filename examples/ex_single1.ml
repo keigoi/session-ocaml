@@ -16,7 +16,7 @@ let neg_client () =
 let neg_ch = new_channel ()
                          
 let _ =
-  ignore @@ Lwt.join [
+  Lwt_main.run @@ Lwt.join [
       accept_ neg_ch neg_server ();
       connect_ neg_ch neg_client ()]
 

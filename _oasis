@@ -13,7 +13,9 @@ Library "session-ocaml"
   BuildTools: ocamlbuild
   Modules:
     Session, UnixAdapter, Multiparty
-  BuildDepends: threads, str, scribble, lwt, compiler-libs, ppx_tools.metaquot
+  InternalModules:
+    UnsafeMVar
+  BuildDepends: threads, str, scribble, lwt.unix, compiler-libs, ppx_tools.metaquot
 
 Library ppx
   Path: ppx

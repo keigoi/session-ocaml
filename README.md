@@ -96,6 +96,10 @@ or
   [%select _n `bark]
 ```
 
+## Caveat
+
+Ocamlfind package lwt.ppx should not be enabled; otherwise ppx rewrites >> into Lwt.bind.
+
 ## TODO
 
 * Better error reporting inside %branch0 and %branch

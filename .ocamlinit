@@ -10,6 +10,7 @@ let () =
 #require "str";;
 #require "scribble";;
 #require "lwt.simple-top";;
+#require "lwt.ppx";;
 #rectypes;;
 
 (* Load each lib provided by this project. *)

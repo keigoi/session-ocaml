@@ -101,6 +101,6 @@ let svc_ch = new_channel ()
 let _ =
   ignore @@ run service svc_ch;
   ignore @@ run (agency ctm_ch) svc_ch;
-  ignore @@ run customer ctm_ch
+  Lwt_main.run (run customer ctm_ch)
 
   
