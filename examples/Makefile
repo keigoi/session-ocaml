@@ -1,4 +1,4 @@
-OCAMLC=ocamlfind ocamlc -thread -package session-ocaml,session-ocaml.ppx -rectypes -short-paths
+OCAMLC=ocamlfind ocamlc -thread -package session-ocaml,session-ocaml.ppx,session-ocaml.ppx_lens -rectypes -short-paths
 OCAMLOPT=ocamlfind ocamlc -thread -package session-ocaml -rectypes -short-paths
 OCAMLMKTOP=ocamlfind ocamlmktop -thread -package session-ocaml -rectypes
 OCAMLDEP=ocamlfind ocamldep -package session-ocaml

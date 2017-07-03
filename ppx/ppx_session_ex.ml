@@ -1,1 +1,1 @@
-let () = Ast_mapper.register "s" Ppx_session.mapper_fun
+let () = Ast_mapper.register "ppx_session" Ppx_session.mapper_fun
