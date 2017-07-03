@@ -4,7 +4,7 @@ type empty
 type all_empty = empty * 'a as 'a
 
 (* lenses on slots *)
-type ('a,'b,'ss,'tt) slot
+type ('a,'b,'ss,'tt) slot = ('ss -> 'a) * ('ss -> 'b -> 'tt)
 
 val _0 : ('a, 'b, ('a * 'ss), ('b * 'ss)) slot
 val _1 : ('a, 'b, ('s0 * ('a * 'ss)), ('s0 * ('b * 'ss))) slot

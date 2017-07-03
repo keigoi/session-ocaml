@@ -1,9 +1,8 @@
-(* open Printf *)
-(* open Ast_helper *)
+open Ast_helper
 open Asttypes
 open Parsetree
 (* open Longident *)
-(* open Ast_convenience *)
+open Ast_convenience
 
 let newname prefix i =
   Printf.sprintf "__ppx_session_%s_%d" prefix i
@@ -17,7 +16,7 @@ let freshname =
   
 let root_module = ref "Session.Syntax"
 
-let longident lid = Ast_helper.Exp.ident (Ast_convenience.lid lid)
+let longident str = Exp.ident (lid str)
 
 let monad_bind () =
   longident (!root_module ^ ".>>=")
@@ -29,22 +28,34 @@ let error loc (s:string) =
    (to use with bindbody_of_let.) *)
 let bindings_of_let bindings =
   List.mapi (fun i binding ->
-      {binding with pvb_pat = Ast_convenience.pvar (newname "let" i)}
+      {binding with pvb_pat = pvar (newname "let" i)}
     ) bindings
 
-(* [p0 = ??] and [p1 = ??] and .. and e ==> [bind dum$0 (fun p0 -> bind dum$1 (fun p1 -> (.. e)))] *)
+(* [p0 = ??] and [p1 = ??] and .. and e ==> [bind dum$0 (fun p0 -> bind dum$1 (fun p1 -> .. -> e))] *)
 let bindbody_of_let exploc bindings exp =
   let rec make i bindings =
     match bindings with
     | [] -> exp
     | binding :: t ->
-      let name = (Ast_convenience.evar (newname "let" i)) [@metaloc binding.pvb_expr.pexp_loc] in
-      let f = [%expr (fun [%p binding.pvb_pat] -> [%e make i t])] [@metaloc binding.pvb_loc] in
+      let name = (evar (newname "let" i)) [@metaloc binding.pvb_expr.pexp_loc] in
+      let f = [%expr (fun [%p binding.pvb_pat] -> [%e make (i+1) t])] [@metaloc binding.pvb_loc] in
       let new_exp = [%expr [%e monad_bind ()] [%e name] [%e f]] [@metaloc exploc] in
       { new_exp with pexp_attributes = binding.pvb_attributes }
   in
   make 0 bindings
 
+(* [{lab1} = e1] and [{lab2} = e2 and .. and e ==> e1 ~bindto:lab1 >>= (fun () -> e2 ~bindto:lab2 ]  *)
+let slot_bind bindings expr =
+  let f binding expr =
+    match binding with
+    | {pvb_pat = {ppat_desc = Ppat_record ([({txt},_)],Closed)}; pvb_expr = rhs}
+    | {pvb_pat = {ppat_desc = Ppat_type {txt}}; pvb_expr = rhs} ->
+      let lensname = String.concat "." (Longident.flatten txt) in
+      let f = Exp.fun_ Label.nolabel None (punit ()) expr in
+      [%expr [%e monad_bind ()] ([%e rhs] ~bindto:[%e evar lensname]) [%e f]]
+    | _ -> raise Not_found
+  in List.fold_right f bindings expr
+  
 (* Generates session selection. [%select `labl] ==> _select0 (fun x -> `labl(x))  *)
 let session_select which labl =
   let selectfunc =
@@ -54,8 +65,8 @@ let session_select which labl =
   in
   let new_exp =
     [%expr [%e selectfunc ]
-           (fun [%p Ast_convenience.pvar "x"] ->
-             [%e Ast_helper.Exp.variant labl (Some(Ast_convenience.evar "x"))]) ]
+           (fun [%p pvar "x"] ->
+             [%e Exp.variant labl (Some(evar "x"))]) ]
   in new_exp
   
 (* Converts match clauses to handle branching.
@@ -97,7 +108,7 @@ let branch_func_name = function
   | `SessionN -> longident (!root_module ^ ".SessionN._branch_start")
 
 let make_branch_func_types labls =
-  let open Ast_helper.Typ in
+  let open Typ in
   let rows =
     List.mapi (fun i labl -> Rtag(labl,[],false,[var ("p"^string_of_int i)])) labls
   in
@@ -110,15 +121,22 @@ let expression_mapper id mapper exp attrs =
 
   (* monadic bind *)
   (* let%s p = e1 in e2 ==> let dum$0 = e1 in Session.(>>=) dum$0 e2 *)
-  | "s", Pexp_let (Nonrecursive, vbl, expression) ->
+  | ("s"|"w"), Pexp_let (Nonrecursive, vbl, expression) ->
       let new_exp =
-        Ast_helper.Exp.let_
+        Exp.let_
           Nonrecursive
           (bindings_of_let vbl)
           (bindbody_of_let exp.pexp_loc vbl expression)
       in
       Some (mapper.Ast_mapper.expr mapper { new_exp with pexp_attributes })
-  | "s", _ -> error pexp_loc "Invalid content for extension %s"
+  | ("s"|"w"), _ -> error pexp_loc "Invalid content for extension %s|%w"
+
+  (* slot bind *)
+  (* let%lin {lab} = e1 in e2 ==> Session.(>>=) (e1 ~bindto:lab) (fun () -> e2) *)
+  | "lin", Pexp_let (Nonrecursive, vbl, expression) ->
+      let new_exp = slot_bind vbl expression in
+      Some (mapper.Ast_mapper.expr mapper { new_exp with pexp_attributes })
+  | "lin", _ -> error pexp_loc "Invalid content for extension %lin"
 
   (* session selection *)
   (* [%select0 `labl] ==> _select (fun x -> `labl(x)) *)
@@ -132,7 +150,7 @@ let expression_mapper id mapper exp attrs =
      let new_exp = session_select (`SessionN e1) labl in
      Some (mapper.Ast_mapper.expr mapper {new_exp with pexp_attributes})
   | "select", Pexp_variant(labl1, Some {pexp_desc=Pexp_variant (labl2, None)}) ->
-     let new_exp = session_select (`SessionN (Ast_helper.Exp.variant labl1 None)) labl2 in
+     let new_exp = session_select (`SessionN (Exp.variant labl1 None)) labl2 in
      Some (mapper.Ast_mapper.expr mapper {new_exp with pexp_attributes})
   | "select", _ -> error pexp_loc "Invalid content for extension %select"
      
@@ -148,7 +166,7 @@ let expression_mapper id mapper exp attrs =
      let cases, labls = session_branch_clauses `Session0 cases in
      let new_typ = make_branch_func_types labls in
      let new_exp =
-       [%expr [%e branch_func_name `Session0] ([%e Ast_helper.Exp.function_ cases] : [%t new_typ ])]
+       [%expr [%e branch_func_name `Session0] ([%e Exp.function_ cases] : [%t new_typ ])]
     in
     Some (mapper.Ast_mapper.expr mapper {new_exp with pexp_attributes})
   | "branch0", _ -> error pexp_loc "Invalid content for extension %branch0"
@@ -162,12 +180,12 @@ let expression_mapper id mapper exp attrs =
      : [`lab1 of 'p1 | .. | `labN of 'pN] * 'a -> 'b)
   *)
   | "branch", Pexp_match (e0, cases) ->
-     let open Ast_helper.Typ in
+     let open Typ in
      let cases, labls = session_branch_clauses (`SessionN e0) cases in
      let new_typ = make_branch_func_types labls in
      let new_exp =
        [%expr [%e branch_func_name `SessionN] [%e e0]
-              ([%e Ast_helper.Exp.function_ cases] : [%t new_typ ])]
+              ([%e Exp.function_ cases] : [%t new_typ ])]
     in
     Some (mapper.Ast_mapper.expr mapper {new_exp with pexp_attributes})
   | "branch", _ -> error pexp_loc "Invalid content for extension %branch"
