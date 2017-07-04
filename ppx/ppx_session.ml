@@ -197,6 +197,30 @@ let rebind_module modexpr =
   | Pmod_ident {txt = id} -> root_module := String.concat "." (Longident.flatten id)
   | _ -> error modexpr.pmod_loc "Use (module M) here."
   
+let runner ({ ptype_loc = loc } as type_decl) =
+  match type_decl with
+  (* | {ptype_kind = Ptype_record labels} -> *)
+  | {ptype_name = {txt = name}; ptype_manifest = Some ({ptyp_desc = Ptyp_object (labels, Closed)})} ->
+    let obj = 
+      let meth (fname,_,_) =
+        {pcf_desc =
+           Pcf_method ({txt=fname;loc=Location.none},
+                       Public,
+                       Cfk_concrete(Fresh, [%expr Session.Empty]));
+         pcf_loc = Location.none;
+         pcf_attributes = []}
+      in
+      Exp.object_ {pcstr_self = Pat.any (); pcstr_fields = List.map meth labels}
+    in
+    let mkfun = Exp.fun_ Label.nolabel None in
+    let runner = mkfun (pvar "x") (app [%expr Session._run_internal] [obj; evar "x"]) in
+    let quoter = Ppx_deriving.create_quoter () in
+    let varname = "run_" ^ name in
+    [{pstr_desc = Pstr_value (Nonrecursive, [Vb.mk (pvar varname) (Ppx_deriving.sanitize ~quoter runner)]); pstr_loc = Location.none}]
+  | _ -> error loc "run_* can be derived only for record or closed object types" 
+
+let has_runner attrs =
+  List.exists (fun ({txt = name},_) -> name = "runner")  attrs
        
 let mapper_fun _ =
   let open Ast_mapper in
@@ -208,11 +232,21 @@ let mapper_fun _ =
      | None -> default_mapper.expr mapper outer
      end
   | _ -> default_mapper.expr mapper outer
-  and structure_item mapper outer =
-    match outer.pstr_desc with
-    | Pstr_extension (({ txt = "s_syntax_rebind" }, PStr [{ pstr_desc = Pstr_eval ({pexp_desc=Pexp_pack modexpr}, _) }]),_) ->
+  and stritem mapper outer =
+    match outer with
+    | {pstr_desc = Pstr_extension (({ txt = "s_syntax_rebind" }, PStr [{ pstr_desc = Pstr_eval ({pexp_desc=Pexp_pack modexpr}, _) }]),_) }->
        rebind_module modexpr;
-       {outer with pstr_desc = Pstr_eval ([%expr ()],[])} (* replace with () *)
-    | _ -> default_mapper.structure_item mapper outer
+       [{outer with pstr_desc = Pstr_eval ([%expr ()],[])}] (* replace with () *)
+    | {pstr_desc = Pstr_type (_, type_decls)} ->
+       let runners =
+         List.map (fun type_decl ->
+           if has_runner type_decl.ptype_attributes then
+             [runner type_decl]
+           else []) type_decls
+       in [outer] @ List.flatten (List.flatten runners)
+    | _ -> [default_mapper.structure_item mapper outer]
   in
-  {default_mapper with expr; structure_item}
+  let structure mapper str =
+    List.flatten (List.map (stritem mapper) str)
+  in
+  {default_mapper with expr; structure}

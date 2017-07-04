@@ -27,9 +27,9 @@ Library ppx
   FindlibName: ppx
   FindlibParent: session-ocaml
   XMETAType: syntax
-  XMETARequires: session-ocaml
+  XMETARequires: session-ocaml, ppx_deriving
   XMETAExtraLines: ppx = "ppx_session"
-  BuildDepends: compiler-libs, ppx_tools.metaquot
+  BuildDepends: compiler-libs, ppx_tools.metaquot, ppx_deriving.api
 
 Library ppx_lens
   Path: ppx
@@ -46,5 +46,5 @@ Executable ppx_session
   Path: ppx
   BuildTools: ocamlbuild
   MainIs: ppx_session_ex.ml
-  BuildDepends: compiler-libs.common, ppx_tools.metaquot
+  BuildDepends: compiler-libs.common, ppx_tools.metaquot, ppx_deriving.api
   CompiledObject: best

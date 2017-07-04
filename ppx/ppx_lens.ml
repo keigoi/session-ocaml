@@ -42,7 +42,7 @@ let rename_tvars mapping typ =
   in
   traverse f typ
 
-(* rename tvars in typ with fresh name *)
+(* replace tvars in typ with fresh name *)
 let change_tvars tvars typ =
   let mapping = ref [] in
   let rec fresh var =
@@ -99,12 +99,12 @@ let str_of_type ~options ~path ({ ptype_loc = loc } as type_decl) =
   let quoter = Ppx_deriving.create_quoter () in
   match type_decl with
   | {ptype_kind = Ptype_record labels} ->
-    let typename = Ppx_deriving.mangle_type_decl (`Prefix deriver) type_decl in
-    let fn = Exp.fun_ Label.nolabel None in
+    let mkfun = Exp.fun_ Label.nolabel None in
+    let varname = Ppx_deriving.mangle_type_decl (`Prefix deriver) type_decl in
     let getter field =
-      fn (pvar typename) (Exp.field (evar typename) (lid field))
+      mkfun (pvar varname) (Exp.field (evar varname) (lid field))
     and setter field = 
-      fn (pvar typename) (fn (pvar field) (record ~over:(evar typename) [(field, (evar field))]))
+      mkfun (pvar varname) (mkfun (pvar field) (record ~over:(evar varname) [(field, (evar field))]))
     in
     let typ = Ppx_deriving.core_type_of_type_decl type_decl in
     let lens { pld_name = { txt = name }; pld_type } =
@@ -127,9 +127,6 @@ let str_of_type ~options ~path ({ ptype_loc = loc } as type_decl) =
     List.map lens labels
   | _ -> raise_errorf ~loc "%s can be derived only for record or closed object types" deriver
 
-let wrap_predef_option typ =
-  typ
-
 let sig_of_type ~options ~path ({ ptype_loc = loc } as type_decl) =
   parse_options options;  
   match type_decl with
@@ -145,7 +142,8 @@ let sig_of_type ~options ~path ({ ptype_loc = loc } as type_decl) =
     in
     List.map lens labels
   | _ -> raise_errorf ~loc "%s can only be derived for record types" deriver
-
+  
+       
 let () =
   Ppx_deriving.(register (create deriver
     ~type_decl_str: (fun ~options ~path type_decls ->

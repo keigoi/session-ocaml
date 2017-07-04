@@ -10,9 +10,10 @@ let _2 = (fun (_,(_,(a,_))) -> a), (fun (s0,(s1,(_,ss))) b -> (s0,(s1,(b,ss))))
 let _3 = (fun (_,(_,(_,(a,_)))) -> a), (fun (s0,(s1,(s2,(_,ss)))) b -> (s0,(s1,(s2,(b,ss)))))
 
 let rec all_empty = Empty, all_empty
-let run f x = snd (f x all_empty)
-let run_ m = snd (m all_empty)
-
+let _run_internal a f x = snd (f x a)
+let run f x = _run_internal all_empty f x
+let run_ m = _run_internal all_empty (fun () -> m) ()
+           
 (* monads *)
 type ('ss,'tt,'v) monad = 'ss -> 'tt * 'v
 

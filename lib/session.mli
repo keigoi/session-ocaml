@@ -1,6 +1,5 @@
-
 (* empty slots *)
-type empty
+type empty = Empty
 type all_empty = empty * 'a as 'a
 
 (* lenses on slots *)
@@ -20,6 +19,7 @@ val (>>) : ('x,'y,'a) monad -> ('y,'z,'b) monad -> ('x,'z,'b) monad
 
 val run : ('a -> (all_empty, all_empty, 'b) monad) -> 'a -> 'b
 val run_ : ((all_empty, all_empty, 'b) monad) -> 'b
+val _run_internal : 'a -> ('b -> ('a, 'a, 'c) monad) -> 'b -> 'c
 
 (* channels *)
 type 'p channel
