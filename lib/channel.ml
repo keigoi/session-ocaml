@@ -1,51 +1,62 @@
-module Q = Queue
+module type IO = sig
+  type +'a io
+  val return : 'a -> 'a io
+  val (>>=) : 'a io -> ('a -> 'b io) -> 'b io
+end
 
-module M = Monitor
+module type MUTEX = sig
+  type +'a io
+  type t
+  val create : unit -> t
+  val lock : t -> unit io
+  val unlock : t -> unit
+end
 
-type 'a t = ('a Q.t ref) M.t
+module type CONDITION = sig
+  type +'a io
+  type m
+  type t
+  val create : unit -> t
+  val signal : t -> unit
+  val wait : t -> m -> unit io
+end
 
-let create () : 'a t = M.create (ref (Q.create ()))
+module type S = sig
+  type +'a io
+  type 'a t
+  val create : unit -> 'a t
+  val send : 'a t -> 'a -> unit io
+  val receive : 'a t -> 'a io
+end  
 
-let send (t : 'a t) (v:'a) : unit = 
-  M.lock t (fun q -> Q.add v !q; M.signal t)
+module Make(IO:IO)(M:MUTEX with type 'a io = 'a IO.io)(C:CONDITION with type 'a io = 'a IO.io and type m = M.t)
+: S with type 'a io = 'a IO.io
+= struct
+  open IO
+  module Q = Queue
 
-let send_all (t : 'a t) (xs:'a list) : unit =
-  M.lock t (fun q -> List.iter (fun x -> Q.add x !q) xs; M.signal t)
+  type +'a io = 'a IO.io
+  type 'a t = 'a Q.t * M.t * C.t
 
-let try_receive (t:'a t) : 'a option = 
-  M.lock t (fun q -> if Q.is_empty !q then None else Some (Q.take !q))
+  let create () : 'a t = Q.create (), M.create (), C.create ()
 
-let receive (t:'a t) : 'a = 
-  M.wait t (fun q ->
-    if Q.is_empty !q then
-      M.WaitMore
-    else
-      M.Return (Q.take !q))
+  let send (q,m,c) v =
+    M.lock m >>= fun _ ->
+    Q.add v q;
+    C.signal c;
+    M.unlock m;
+    return ()
 
-let clear_queue_ t = 
-  M.lock t (fun q -> 
-    let old = !q in 
-    q := Q.create (); 
-    old)
-
-let receive_all (t:'a t) (func:'b -> 'a -> 'b) (init:'b) : 'b =
-  Q.fold func init (clear_queue_ t)
-
-let receive_all_ (t:'a t) (func:'a -> unit) : unit =
-  receive_all t (fun _ x -> func x) ()
-
-let peek (t:'a t) : 'a = 
-  M.wait t (fun q ->
-    if Q.is_empty !q then
-      M.WaitMore
-    else
-      M.Return (Q.peek !q))
-
-let clear (t:'a t) : unit =
-  ignore (clear_queue_ t)
-
-let is_empty (t:'a t) : bool =
-  M.lock t (fun q -> Q.is_empty !q)
-
-let length (t:'a t) : int =
-  M.lock t (fun q -> Q.length !q)
+  let receive (q,m,c) =
+    M.lock m >>= fun _ ->
+    let rec loop () =
+      if Q.is_empty q then
+        C.wait c m >>=
+        loop
+      else
+        return (Q.take q)
+    in
+    loop () >>= fun v ->
+    M.unlock m;
+    return v
+end

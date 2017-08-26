@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: c78289b7d3f993374d15920e783d18c8)
+# DO NOT EDIT (digest: 1f239d825c4aa5a24ed11e685c0a622d)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -14,27 +14,24 @@ true: annot, bin_annot
 ".git": not_hygienic
 "_darcs": -traverse
 "_darcs": not_hygienic
-# Library session-ocaml
-"lib/session-ocaml.cmxs": use_session-ocaml
-<lib/session-ocaml.{cma,cmxa}>: oasis_library_session_ocaml_byte
-<lib/*.ml{,i,y}>: oasis_library_session_ocaml_byte
-<lib/session-ocaml.{cma,cmxa}>: oasis_library_session_ocaml_native
-<lib/*.ml{,i,y}>: oasis_library_session_ocaml_native
+# Library session_ocaml
+"lib/session_ocaml.cmxs": use_session_ocaml
+"lib/base.cmx": for-pack(Session_ocaml)
+"lib/direct.cmx": for-pack(Session_ocaml)
+"lib/channel.cmx": for-pack(Session_ocaml)
+"lib/dchannel.cmx": for-pack(Session_ocaml)
+"lib/unsafe.cmx": for-pack(Session_ocaml)
+<lib/*.ml{,i,y}>: pkg_linocaml
 <lib/*.ml{,i,y}>: pkg_str
 <lib/*.ml{,i,y}>: pkg_threads
-# Library ppx
-"ppx/ppx.cmxs": use_ppx
-# Library ppx_lens
-"ppx/ppx_lens.cmxs": use_ppx_lens
-<ppx/*.ml{,i,y}>: pkg_compiler-libs
-<ppx/*.ml{,i,y}>: pkg_ppx_deriving
-# Executable ppx_session
-<ppx/ppx_session_ex.{native,byte}>: pkg_compiler-libs.common
-<ppx/ppx_session_ex.{native,byte}>: pkg_ppx_deriving.api
-<ppx/ppx_session_ex.{native,byte}>: pkg_ppx_tools.metaquot
-<ppx/*.ml{,i,y}>: pkg_compiler-libs.common
-<ppx/*.ml{,i,y}>: pkg_ppx_deriving.api
-<ppx/*.ml{,i,y}>: pkg_ppx_tools.metaquot
+# Library session_ocaml_lwt
+"lwt/session_ocaml_lwt.cmxs": use_session_ocaml_lwt
+<lwt/*.ml{,i,y}>: pkg_linocaml
+<lwt/*.ml{,i,y}>: pkg_lwt
+<lwt/*.ml{,i,y}>: pkg_lwt.unix
+<lwt/*.ml{,i,y}>: pkg_str
+<lwt/*.ml{,i,y}>: pkg_threads
+<lwt/*.ml{,i,y}>: use_session_ocaml
 # OASIS_STOP
 
 "examples": not_hygienic

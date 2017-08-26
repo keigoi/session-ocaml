@@ -1,38 +1,24 @@
 # OASIS_START
-# DO NOT EDIT (digest: 594b6b912e4b10f19f41e35e62b1e032)
+# DO NOT EDIT (digest: c51fca5b4050149755d35226f25f00ba)
 version = "0.1"
 description =
 "A concurrent / distributed programming with protocol typing, based on Session Types."
-requires = "threads str"
-archive(byte) = "session-ocaml.cma"
-archive(byte, plugin) = "session-ocaml.cma"
-archive(native) = "session-ocaml.cmxa"
-archive(native, plugin) = "session-ocaml.cmxs"
-exists_if = "session-ocaml.cma"
-package "ppx_lens" (
+requires = "threads str linocaml"
+archive(byte) = "session_ocaml.cma"
+archive(byte, plugin) = "session_ocaml.cma"
+archive(native) = "session_ocaml.cmxa"
+archive(native, plugin) = "session_ocaml.cmxs"
+exists_if = "session_ocaml.cma"
+package "lwt" (
  version = "0.1"
  description =
  "A concurrent / distributed programming with protocol typing, based on Session Types."
- requires = "ppx_deriving session-ocaml"
- archive(syntax, preprocessor) = "ppx_lens.cma"
- archive(syntax, toploop) = "ppx_lens.cma"
- archive(syntax, preprocessor, native) = "ppx_lens.cmxa"
- archive(syntax, preprocessor, native, plugin) = "ppx_lens.cmxs"
- ppxopt = "ppx_deriving,./ppx_lens.cma"
- exists_if = "ppx_lens.cma"
-)
-
-package "ppx" (
- version = "0.1"
- description =
- "A concurrent / distributed programming with protocol typing, based on Session Types."
- requires = "session-ocaml ppx_deriving"
- archive(syntax, preprocessor) = "ppx.cma"
- archive(syntax, toploop) = "ppx.cma"
- archive(syntax, preprocessor, native) = "ppx.cmxa"
- archive(syntax, preprocessor, native, plugin) = "ppx.cmxs"
- ppx = "ppx_session"
- exists_if = "ppx.cma"
+ requires = "session_ocaml lwt lwt.unix"
+ archive(byte) = "session_ocaml_lwt.cma"
+ archive(byte, plugin) = "session_ocaml_lwt.cma"
+ archive(native) = "session_ocaml_lwt.cmxa"
+ archive(native, plugin) = "session_ocaml_lwt.cmxs"
+ exists_if = "session_ocaml_lwt.cma"
 )
 # OASIS_STOP
 

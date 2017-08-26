@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: e739e89afac8c3f151ea235f0e345934) *)
+(* DO NOT EDIT (digest: dcb2c9e1a1038c69db64b43127f8aa51) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -105,10 +105,7 @@ module OASISString = struct
         ok := false;
       incr str_idx
     done;
-    if !what_idx = String.length what then
-      true
-    else
-      false
+    !what_idx = String.length what
 
 
   let strip_starts_with ~what str =
@@ -131,10 +128,7 @@ module OASISString = struct
         ok := false;
       decr str_idx
     done;
-    if !what_idx = -1 then
-      true
-    else
-      false
+    !what_idx = -1
 
 
   let strip_ends_with ~what str =
@@ -440,7 +434,7 @@ module OASISExpr = struct
 end
 
 
-# 443 "myocamlbuild.ml"
+# 437 "myocamlbuild.ml"
 module BaseEnvLight = struct
 (* # 22 "src/base/BaseEnvLight.ml" *)
 
@@ -520,7 +514,7 @@ module BaseEnvLight = struct
 end
 
 
-# 523 "myocamlbuild.ml"
+# 517 "myocamlbuild.ml"
 module MyOCamlbuildFindlib = struct
 (* # 22 "src/plugins/ocamlbuild/MyOCamlbuildFindlib.ml" *)
 
@@ -881,43 +875,15 @@ module MyOCamlbuildBase = struct
 end
 
 
-# 884 "myocamlbuild.ml"
+# 878 "myocamlbuild.ml"
 open Ocamlbuild_plugin;;
 let package_default =
   {
      MyOCamlbuildBase.lib_ocaml =
-       [
-          ("session-ocaml", ["lib"], []);
-          ("ppx", ["ppx"], []);
-          ("ppx_lens", ["ppx"], [])
-       ];
+       [("session_ocaml", ["lib"], []); ("session_ocaml_lwt", ["lwt"], [])];
      lib_c = [];
-     flags =
-       [
-          (["oasis_library_session_ocaml_byte"; "ocaml"; "link"; "byte"],
-            [(OASISExpr.EBool true, S [A "-rectypes"])]);
-          (["oasis_library_session_ocaml_native"; "ocaml"; "link"; "native"],
-            [(OASISExpr.EBool true, S [A "-rectypes"])]);
-          (["oasis_library_session_ocaml_byte"; "ocaml"; "ocamldep"; "byte"],
-            [(OASISExpr.EBool true, S [A "-rectypes"])]);
-          ([
-              "oasis_library_session_ocaml_native";
-              "ocaml";
-              "ocamldep";
-              "native"
-           ],
-            [(OASISExpr.EBool true, S [A "-rectypes"])]);
-          (["oasis_library_session_ocaml_byte"; "ocaml"; "compile"; "byte"],
-            [(OASISExpr.EBool true, S [A "-rectypes"])]);
-          ([
-              "oasis_library_session_ocaml_native";
-              "ocaml";
-              "compile";
-              "native"
-           ],
-            [(OASISExpr.EBool true, S [A "-rectypes"])])
-       ];
-     includes = []
+     flags = [];
+     includes = [("lwt", ["lib"])]
   }
   ;;
 
@@ -925,6 +891,6 @@ let conf = {MyOCamlbuildFindlib.no_automatic_syntax = false}
 
 let dispatch_default = MyOCamlbuildBase.dispatch_default conf package_default;;
 
-# 929 "myocamlbuild.ml"
+# 895 "myocamlbuild.ml"
 (* OASIS_STOP *)
 Ocamlbuild_plugin.dispatch dispatch_default;;

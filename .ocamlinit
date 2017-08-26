@@ -8,10 +8,13 @@ let () =
 
 #require "threads";;
 #require "str";;
-#rectypes;;
+#require "linocaml";;
+#require "linocaml.ppx";;
+#require "linocaml.ppx_lens";;
 
 (* Load each lib provided by this project. *)
 #directory "_build/lib";;
-#load "session-ocaml.cma";;
+#load "session_ocaml.cmo";;
 
-open Session;;
+open Linocaml.Direct;;
+open Session_ocaml.Direct;;

@@ -1,11 +1,13 @@
 FLG -rectypes
 B +threads
-PKG threads unix compiler-libs.common ppx_tools ppx_tools.metaquot ppx_deriving
+PKG threads unix compiler-libs.common linocaml.ppx linocaml.ppx_lens lwt.unix
 
 S lib
+S lwt
 S ppx
 S examples
 
 B _build/lib
+B _build/lwt
 B _build/ppx
 B examples
