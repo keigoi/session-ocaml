@@ -11,7 +11,7 @@ module type SESSION = sig
   (* channels *)
   type 'p channel
 
-  val new_channel : unit -> 'p channel
+  val new_shmem_channel : unit -> 'p channel
 
   (* polarized session types *)
   type req and resp
@@ -25,14 +25,14 @@ module type SESSION = sig
   val accept : 'p channel -> ('pre, 'pre, ('p, serv) sess) monad
   val connect : 'p channel -> ('pre, 'pre, ('p, cli) sess) monad
 
-  val close : (([`close], 'r1*'r2) sess, empty, 'pre, 'post) slot -> ('pre, 'post, unit) monad
-  val send : (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot -> 'v -> ('pre, 'post, unit) monad
+  val close : (([`close], 'r1*'r2) sess, empty, 'pre, 'post) slot -> ('pre, 'post, unit lin) monad
+  val send : (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot -> 'v -> ('pre, 'post, unit lin) monad
   val receive : (([`msg of 'r2 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot -> ('pre, 'post, 'v data lin) monad
 
   val select
       :  (([`branch of 'r1 * 'br],'r1*'r2) sess, ('p,'r1*'r2) sess, 'pre, 'post) slot
          -> (('p,'r2*'r1) sess -> 'br)
-         -> ('pre, 'post, unit) monad
+         -> ('pre, 'post, unit lin) monad
 
   val branch
       :  (([`branch of 'r2 * 'br], 'r1*'r2) sess, empty, 'pre, 'post) slot
@@ -41,7 +41,7 @@ module type SESSION = sig
   val deleg_send
       : (([`deleg of 'r1 * ('pp, 'rr) sess * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot
         -> (('pp, 'rr) sess, empty, 'post, 'uu) slot
-        -> ('pre, 'uu, unit) monad
+        -> ('pre, 'uu, unit lin) monad
 
   val deleg_recv
       : (([`deleg of 'r2 * ('pp, 'rr) sess * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot
@@ -68,7 +68,7 @@ module Make(LinIO:Linocaml.Base.LIN_IO)(Chan:Channel.S with type 'a io = 'a LinI
                      
   type 'p channel = 'p cont Dchan.t Chan.t
 
-  let new_channel () = Chan.create () 
+  let new_shmem_channel () = Chan.create () 
 
   (* polarized session types *)
   type req = Req and resp = Resp
@@ -101,22 +101,22 @@ module Make(LinIO:Linocaml.Base.LIN_IO)(Chan:Channel.S with type 'a io = 'a LinI
       LinIO.IO.return (pre, mksess (raw,cli))
       end
 
-  let close : (([`close], 'r1*'r2) sess, empty, 'pre, 'post) slot -> ('pre, 'post, unit) monad =
+  let close : (([`close], 'r1*'r2) sess, empty, 'pre, 'post) slot -> ('pre, 'post, unit lin) monad =
     fun {get;put} ->
     LinIO.Internal.__monad begin
         fun pre ->
         (* Dchan.close (unsess (get pre)) >>= fun _ -> *)
-        LinIO.IO.return (put pre Empty, ())
+        LinIO.IO.return (put pre Empty, Lin_Internal__ ())
       end
     
-  let send : (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot -> 'v -> ('pre, 'post, unit) monad =
+  let send : (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot -> 'v -> ('pre, 'post, unit lin) monad =
     fun {get;put} v ->
     LinIO.Internal.__monad begin
         fun pre ->
         let s,q = unsess (get pre) in
         let s' = Dchan.create () in
         Dchan.send s (Msg(v, Dchan.reverse s')) >>= fun _ ->
-        LinIO.IO.return (put pre (mksess (s',q)), ())
+        LinIO.IO.return (put pre (mksess (s',q)), Lin_Internal__ ())
       end
       
   let receive : (([`msg of 'r2 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot -> ('pre, 'post, 'v data lin) monad =
@@ -131,14 +131,14 @@ module Make(LinIO:Linocaml.Base.LIN_IO)(Chan:Channel.S with type 'a io = 'a LinI
   let select
       :  (([`branch of 'r1 * 'br],'r1*'r2) sess, ('p,'r1*'r2) sess, 'pre, 'post) slot
          -> (('p,'r2*'r1) sess -> 'br)
-         -> ('pre, 'post, unit) monad =
+         -> ('pre, 'post, unit lin) monad =
     fun {get;put} f ->
     LinIO.Internal.__monad begin
         fun pre ->
         let s,q = unsess (get pre) in
         let s' = Dchan.create () in
         Dchan.send s (Branch (f (mksess (Dchan.reverse s',swap q)))) >>= fun _ ->
-        LinIO.IO.return (put pre (mksess (s',q)), ())
+        LinIO.IO.return (put pre (mksess (s',q)), Lin_Internal__ ())
       end
         
   let branch
@@ -155,7 +155,7 @@ module Make(LinIO:Linocaml.Base.LIN_IO)(Chan:Channel.S with type 'a io = 'a LinI
   let deleg_send
       : (([`deleg of 'r1 * ('pp, 'rr) sess * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'mid) slot
         -> (('pp, 'rr) sess, empty, 'mid, 'post) slot
-        -> ('pre, 'post, unit) monad =
+        -> ('pre, 'post, unit lin) monad =
     fun s1_ s2_ ->
     LinIO.Internal.__monad begin
         fun pre ->
@@ -165,7 +165,7 @@ module Make(LinIO:Linocaml.Base.LIN_IO)(Chan:Channel.S with type 'a io = 'a LinI
         let s2 = s2_.get mid in
         let post = s2_.put mid Empty in
         Dchan.send s1 (Chan(s2,s1')) >>= fun x ->
-        LinIO.IO.return (post, ())
+        LinIO.IO.return (post, Lin_Internal__ ())
       end
 
   let deleg_recv

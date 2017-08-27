@@ -1,6 +1,6 @@
 OASISFormat: 0.4
 Name:        session-ocaml
-Version:     0.1
+Version:     0.2
 Homepage:    http://www.ct.info.gifu-u.ac.jp/~keigoi/session-ocaml/
 Synopsis:    A concurrent / distributed programming with protocol typing,
   based on Session Types.
@@ -17,11 +17,13 @@ Library session_ocaml
   Path:       lib
   Pack: true
   Modules:
-    Base, Direct
+    Base, Direct, Net
   InternalModules:
     Channel, Dchannel, Unsafe
   BuildDepends:
-    threads, str, linocaml
+    threads, str, linocaml, ppx_implicits
+  ByteOpt: -I +threads
+  NativeOpt: -I +threads
 
 Library session_ocaml_lwt
   Build$:        flag(lwt)
@@ -33,3 +35,5 @@ Library session_ocaml_lwt
     Session_ocaml_lwt
   BuildDepends:
     session_ocaml, lwt, lwt.unix
+  ByteOpt: -I +threads
+  NativeOpt: -I +threads

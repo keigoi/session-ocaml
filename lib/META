@@ -1,16 +1,16 @@
 # OASIS_START
-# DO NOT EDIT (digest: c51fca5b4050149755d35226f25f00ba)
-version = "0.1"
+# DO NOT EDIT (digest: 72a24a9168f90bc8d63f120b116d2857)
+version = "0.2"
 description =
 "A concurrent / distributed programming with protocol typing, based on Session Types."
-requires = "threads str linocaml"
+requires = "threads str linocaml ppx_implicits"
 archive(byte) = "session_ocaml.cma"
 archive(byte, plugin) = "session_ocaml.cma"
 archive(native) = "session_ocaml.cmxa"
 archive(native, plugin) = "session_ocaml.cmxs"
 exists_if = "session_ocaml.cma"
 package "lwt" (
- version = "0.1"
+ version = "0.2"
  description =
  "A concurrent / distributed programming with protocol typing, based on Session Types."
  requires = "session_ocaml lwt lwt.unix"

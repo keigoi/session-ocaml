@@ -11,3 +11,5 @@ module Chan = Channel.Make
                 end)
 
 include Base.Make(Linocaml.Direct)(Chan)
+
+module Net = Net.Make(Linocaml.Direct)(Chan)(Unsafe.Make_raw_dchan(Dchannel.Make(Chan)))

@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: dcb2c9e1a1038c69db64b43127f8aa51) *)
+(* DO NOT EDIT (digest: 81db59f06385bbf8ed84cf4c8a469d5d) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -882,7 +882,68 @@ let package_default =
      MyOCamlbuildBase.lib_ocaml =
        [("session_ocaml", ["lib"], []); ("session_ocaml_lwt", ["lwt"], [])];
      lib_c = [];
-     flags = [];
+     flags =
+       [
+          (["oasis_library_session_ocaml_byte"; "ocaml"; "link"; "byte"],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          (["oasis_library_session_ocaml_native"; "ocaml"; "link"; "native"],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          (["oasis_library_session_ocaml_byte"; "ocaml"; "ocamldep"; "byte"],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          ([
+              "oasis_library_session_ocaml_native";
+              "ocaml";
+              "ocamldep";
+              "native"
+           ],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          (["oasis_library_session_ocaml_byte"; "ocaml"; "compile"; "byte"],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          ([
+              "oasis_library_session_ocaml_native";
+              "ocaml";
+              "compile";
+              "native"
+           ],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          (["oasis_library_session_ocaml_lwt_byte"; "ocaml"; "link"; "byte"],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          ([
+              "oasis_library_session_ocaml_lwt_native";
+              "ocaml";
+              "link";
+              "native"
+           ],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          ([
+              "oasis_library_session_ocaml_lwt_byte";
+              "ocaml";
+              "ocamldep";
+              "byte"
+           ],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          ([
+              "oasis_library_session_ocaml_lwt_native";
+              "ocaml";
+              "ocamldep";
+              "native"
+           ],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          ([
+              "oasis_library_session_ocaml_lwt_byte";
+              "ocaml";
+              "compile";
+              "byte"
+           ],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          ([
+              "oasis_library_session_ocaml_lwt_native";
+              "ocaml";
+              "compile";
+              "native"
+           ],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])])
+       ];
      includes = [("lwt", ["lib"])]
   }
   ;;
@@ -891,6 +952,6 @@ let conf = {MyOCamlbuildFindlib.no_automatic_syntax = false}
 
 let dispatch_default = MyOCamlbuildBase.dispatch_default conf package_default;;
 
-# 895 "myocamlbuild.ml"
+# 956 "myocamlbuild.ml"
 (* OASIS_STOP *)
 Ocamlbuild_plugin.dispatch dispatch_default;;
