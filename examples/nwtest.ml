@@ -31,7 +31,7 @@ let connect_tcp : string -> int -> ('p, tcp) connector =
 let cli () =
   let google = connect_tcp "www.google.com" 80
   in
-  connect google >>= fun%lin #s ->
+  let%lin #s = connect google in
   select s (fun x->`GET(x)) >>
   send s "/index.html" >>
     branch s >>=
