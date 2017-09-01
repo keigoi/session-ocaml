@@ -1,6 +1,6 @@
 FLG -rectypes
 B +threads
-PKG threads unix compiler-libs.common lwt.unix ppx_implicits linocaml.ppx linocaml.ppx_lens
+PKG threads unix compiler-libs.common lwt.unix linocaml.ppx linocaml.ppx_lens ppx_implicits
 
 S lib
 S lwt

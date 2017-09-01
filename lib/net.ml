@@ -3,32 +3,10 @@ type ('a,'b,'p,'q) slot = ('a,'b,'p,'q) Linocaml.Lens.t
 
 open Linocaml.Base
 open Linocaml.Lens
-   
+
 module type SESSION = sig
   type +'a io
   type ('p,'q,'a) monad
-
-  type shmem
-  type net
-
-  type 'c conn = {conn : 'c; close : unit -> unit io}
-  type ('p,'c) connector = unit -> 'c conn io
-  type ('p,'c) acceptor = unit -> 'c conn io
-
-  val new_shmem_channel : unit -> ('p,shmem) connector * ('p,shmem) acceptor
-
-  module Sender : sig
-    type ('c,'v) t = ('c -> 'v -> unit io, [%imp Senders]) Ppx_implicits.t
-  end
-  module Receiver : sig
-    type ('c,'v) t = ('c -> 'v io, [%imp Receivers]) Ppx_implicits.t
-  end
-  module Senders : sig
-    val _f : shmem -> 'v -> unit io
-  end
-  module Receivers : sig
-    val _f : shmem -> 'v io
-  end
 
   (* polarized session types *)
   type req and resp
@@ -39,10 +17,43 @@ module type SESSION = sig
   type ('p, 'q, 'c) sess_
   type ('p, 'q, 'c) sess = ('p,'q, 'c) sess_ lin
 
+  val _mksess : 'c -> ('p,'q,'c) sess
+
+  (* connectors *)
+  type ('p,'c) connector = unit -> 'c io
+  type ('p,'c) acceptor = unit -> 'c io
+
+  module Sender : sig
+    type ('c,'v) t = ('c -> 'v -> unit io, [%imp Senders]) Ppx_implicits.t
+  end
+  module Receiver : sig
+    type ('c,'v) t = ('c -> 'v io, [%imp Receivers]) Ppx_implicits.t
+  end
+  module Closer : sig
+    type 'c t = ('c -> unit io, [%imp Closers]) Ppx_implicits.t
+  end
+
+  (* connections on shared memory *)
+  type shmem
+  val new_shmem_channel : unit -> ('p,shmem) connector * ('p,shmem) acceptor
+  module Senders : sig
+    val _f : shmem -> 'v -> unit io
+  end
+  module Receivers : sig
+    val _f : shmem -> 'v io
+  end
+  module Closers : sig
+    val _f : shmem -> unit io
+  end
+
+  (* connection primitives *)
   val accept : ('p,'c) acceptor -> ('pre, 'pre, ('p, serv, 'c) sess) monad
   val connect : ('p,'c) connector -> ('pre, 'pre, ('p, cli, 'c) sess) monad
 
-  val close : (([`close], 'r1*'r2, 'c) sess, empty, 'pre, 'post) slot -> ('pre, 'post, unit lin) monad
+  (* session primitives *)
+  val close :
+    ?_closer:'c Closer.t ->
+    (([`close], 'r1*'r2, 'c) sess, empty, 'pre, 'post) slot -> ('pre, 'post, unit lin) monad
   val send :
     ?_sender:('c, 'v) Sender.t ->
     (([`msg of 'r1 * 'v * 'p], 'r1*'r2, 'c) sess, ('p, 'r1*'r2, 'c) sess, 'pre, 'post) slot -> 'v -> ('pre, 'post, unit lin) monad
@@ -83,7 +94,6 @@ module Make(LinIO:Linocaml.Base.LIN_IO)
   type ('p,'q,'a) monad = ('p,'q,'a) LinIO.monad
 
   type shmem = RawChan.t
-  type net
 
   module Sender = struct
     type ('c,'v) t = ('c -> 'v -> unit io, [%imp Senders]) Ppx_implicits.t
@@ -93,29 +103,37 @@ module Make(LinIO:Linocaml.Base.LIN_IO)
     type ('c,'v) t = ('c -> 'v io, [%imp Receivers]) Ppx_implicits.t
     let unpack : ('c,'v) t -> 'c -> 'v io = fun d -> Ppx_implicits.imp ~d
   end
+  module Closer = struct
+    type 'c t = ('c -> unit io, [%imp Closers]) Ppx_implicits.t
+    let unpack : 'c t -> 'c -> unit io = fun d -> Ppx_implicits.imp ~d
+  end
   module Senders = struct
     let _f = RawChan.send
   end
   module Receivers = struct
     let _f = RawChan.receive
   end
+  module Closers = struct
+    let _f _ = LinIO.IO.return ()
+  end
 
-  type 'c conn = {conn : 'c; close : unit -> unit io}
-  type ('p,'c) connector = unit -> 'c conn io
-  type ('p,'c) acceptor = unit -> 'c conn io
+  type ('p,'c) connector = unit -> 'c io
+  type ('p,'c) acceptor = unit -> 'c io
 
-  type (_, _, 'c) sess_ = 'c conn
+  type (_, _, 'c) sess_ = 'c
    and ('p, 'q, 'c) sess = ('p,'q,'c) sess_ lin
+
+  let _mksess s = Lin_Internal__ s
 
   let new_shmem_channel () =
     let ch = Chan.create () in
     (fun () -> let raw = RawChan.create () in
                let open LinIO.IO in
                Chan.send ch (RawChan.reverse raw) >>= fun _ ->
-               return {conn=raw;close=(fun _ -> return ())}),
+               return raw),
     (fun () -> let open LinIO.IO in
                Chan.receive ch >>= fun raw ->
-               return {conn=raw;close=(fun _ -> return ())})
+               return raw)
     
 
   (* polarized session types *)
@@ -152,12 +170,13 @@ module Make(LinIO:Linocaml.Base.LIN_IO)
            LinIO.IO.return (pre, mksess raw)
          end
 
-  let close : (([`close], 'r1*'r2, 'c) sess, empty, 'pre, 'post) slot -> ('pre, 'post, unit lin) monad =
-    fun {get;put} ->
+  let close : ?_closer:'c Closer.t -> (([`close], 'r1*'r2, 'c) sess, empty, 'pre, 'post) slot -> ('pre, 'post, unit lin) monad =
+    fun ?_closer {get;put} ->
     LinIO.Internal.__monad begin
         fun pre ->
         let open LinIO.IO in
-        (unsess (get pre)).close () >>= fun _ ->
+        let closer = Closer.unpack @@ untrans _closer in
+        closer (unsess (get pre)) >>= fun _ ->
         LinIO.IO.return (put pre Empty, Lin_Internal__ ())
       end
     
@@ -165,21 +184,21 @@ module Make(LinIO:Linocaml.Base.LIN_IO)
     fun ?_sender {get;put} v ->
     LinIO.Internal.__monad begin
         fun pre ->
-        let {conn} as raw = unsess (get pre) in
+        let conn = unsess (get pre) in
         let sender = Sender.unpack @@ untrans _sender in
         let open LinIO.IO in
         sender conn v >>= fun () ->
-        LinIO.IO.return (put pre (mksess raw), Lin_Internal__ ())
+        LinIO.IO.return (put pre (mksess conn), Lin_Internal__ ())
       end
       
   let receive : ?_receiver:('c,'v) Receiver.t -> (([`msg of 'r2 * 'v * 'p], 'r1*'r2, 'c) sess, ('p, 'r1*'r2, 'c) sess, 'pre, 'post) slot -> ('pre, 'post, 'v data lin) monad =
     fun ?_receiver {get;put} ->
     LinIO.Internal.__monad begin
         fun pre ->
-        let {conn} as raw = unsess (get pre) in
+        let conn = unsess (get pre) in
         let receiver = Receiver.unpack @@ untrans _receiver in
         receiver conn >>= fun x ->
-        LinIO.IO.return (put pre (mksess raw), Lin_Internal__ (Data_Internal__ x))
+        LinIO.IO.return (put pre (mksess conn), Lin_Internal__ (Data_Internal__ x))
       end
 
   let select
@@ -190,10 +209,10 @@ module Make(LinIO:Linocaml.Base.LIN_IO)
     fun ?_sender {get;put} f ->
     LinIO.Internal.__monad begin
         fun pre ->
-        let {conn} as raw = unsess (get pre) in
+        let conn = unsess (get pre) in
         let sender = Sender.unpack @@ untrans _sender in
         sender conn (f (Obj.magic ())) >>= fun _ ->
-        LinIO.IO.return (put pre (mksess raw), Lin_Internal__ ())
+        LinIO.IO.return (put pre (mksess conn), Lin_Internal__ ())
       end
         
   let branch
@@ -203,7 +222,7 @@ module Make(LinIO:Linocaml.Base.LIN_IO)
     fun ?_receiver {get;put} ->
     LinIO.Internal.__monad begin
         fun pre ->
-        let {conn} as raw = unsess (get pre) in
+        let conn = unsess (get pre) in
         let receiver = Receiver.unpack @@ untrans _receiver in
         receiver conn >>= fun br -> (* FIXME *)
         LinIO.IO.return (put pre Empty, Lin_Internal__ br)
@@ -236,5 +255,3 @@ module Make(LinIO:Linocaml.Base.LIN_IO)
   (*       LinIO.IO.return (put pre Empty, (s2,mksess (s1',q))) *)
   (*     end *)
 end
-
-     
