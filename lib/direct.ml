@@ -24,7 +24,7 @@ module Net = struct
       val _f : tcp -> unit
     end
   end = struct
-    let connector ~host ~port : ('p, tcp) connector = fun () ->
+    let connector ~host ~port : ('p, tcp) connector = create_connector @@ fun () ->
       match Unix.getaddrinfo host (string_of_int port) [] with
       | [] -> failwith ("Host not found " ^ host)
       | h::_ ->

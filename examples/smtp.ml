@@ -1,3 +1,4 @@
+(* ocamlfind ocamlc -o smtp -linkpkg -short-paths -thread -package linocaml.ppx,linocaml.ppx_lens,session_ocaml smtp.ml *)
 open Linocaml.Direct
 open Session_ocaml.Direct.Net
 
@@ -6,13 +7,16 @@ let bufsize = 4096
 (* EHLO example.com *)                (* MAIL FROM: alice@example.com *)
 type ehlo = EHLO of string            type mail = MAIL of string
 (* RCPT TO: bob@example.com *)        (* DATA *)
-type rcpt = RCPT of string            type data = DATA
+type rcpt = RCPT of string            type data_ = DATA
 (* QUIT *)                            (* Success e.g. 250 Ok *)
 type quit = QUIT                      type r200 = R200 of string list
 (* Error e.g. 554 Relay denied *)     (* 354 Start mail input *)
 type r500 = R500 of string list       type r354 = R354 of string list
+(* mail body *)
+type mailbody = MailBody of string
 
-module SMTP_Commands = struct
+(* Instance declaration for SMTP reply deserialisers *)
+module Receivers = struct
 
   let crlf = (Str.regexp "\r\n")
   let msgbody s = String.sub s 4 (String.length s-4)
@@ -70,73 +74,108 @@ module SMTP_Commands = struct
          f tcp (List.map msgbody lines)
 
   let r200 = ('2', (fun c x -> `_200(Linocaml.Base.Data_Internal__ x,_mksess c)))
-  let r354 = ('3', (fun c x -> `_354(x,_mksess c)))
-  let r500 = ('5', (fun c x -> `_500(x,_mksess c)))
-  let _200 c : [<`_200 of string list Linocaml.Base.data * ('p,'q,tcp) sess] = parse_reply [r200] c
-  let _200_or_500 c = parse_reply [r200; r500] c
-  let _354 c = parse_reply [r354] c
+  let r354 = ('3', (fun c x -> `_354(Linocaml.Base.Data_Internal__ x,_mksess c)))
+  let r500 = ('5', (fun c x -> `_500(Linocaml.Base.Data_Internal__ x,_mksess c)))
+  let _200 c : [`_200 of _ * _] = parse_reply [r200] c
+  let _200_or_500 c : [`_200 of _ * _ | `_500 of _ * _] = parse_reply [r200; r500] c
+  let _354 c : [`_354 of _ * _] = parse_reply [r354] c
 
-  let write str {out} = output out str
-           
-  let _ehlo (`EHLO v)  = write @@ "EHLO " ^ v ^ "\r\n"
-  let _mail (`MAIL v)  = write @@ "MAIL FROM:" ^ v ^ "\r\n"
-  let _rcpt (`RCPT v)  = write @@ "RCPT TO:" ^ v ^ "\r\n"
-  let _data `DATA      = write "DATA\r\n"
-  let _quit `QUIT      = write "QUIT\r\n"
-  let _string_list ls = write @@ String.concat "\r\n" ls ^ "\r\n.\r\n"
 end
 
+(* Instance declaration for SMTP command serialisers *)
+module Senders = struct
+  let write {out} str =
+    output_string out str;
+    flush out
 
-open SMTP_Commands
+  let _ehlo c (`EHLO (v,_) : [`EHLO of _]) = write c @@ "EHLO " ^ v ^ "\r\n"
+  let _mailbody c (MailBody s) = write c @@ s ^ "\r\n.\r\n"
 
-   
-(* type smtp = [`msg of resp * r200 * [`msg of req * ehlo * [`msg of resp * r200 * *)
-(*     mail_loop]]] *)
-(* and mail_loop = [`branch of req * *)
-(*     [`left of [`msg of req * mail * [`msg of resp * r200 * rcpt_loop]] *)
-(*     |`right of [`msg of req * quit * [`close]]]] *)
-(* and rcpt_loop = [`branch of req * [`left of [`msg of req * rcpt * *)
-(*       [`branch of resp * [`left of [`msg of resp * r200 * rcpt_loop] *)
-(*         |`right of [`msg of resp * r500 * [`msg of req * quit * [`close]]]]]] *)
-(*     |`right of body]] *)
-(* and body = [`msg of req * data * [`msg of resp * r354 * [`msg of req * string list * *)
-(*     [`msg of resp * r200 * mail_loop]]]] *)
+  let _mail c : [`MAIL of _] -> unit = function
+    | `MAIL(v,_) -> write c @@ "MAIL FROM:" ^ v ^ "\r\n"
+
+  let _quit c : [`QUIT of _] -> unit = function
+    | `QUIT(_) -> write c "QUIT\r\n"
+
+  let _rcpt_or_data c = (function
+    | `RCPT(v,_) -> write c @@ "RCPT TO:" ^ v ^ "\r\n"
+    | `DATA(_) -> write c "DATA\r\n"
+                  : [`RCPT of _ | `DATA of _] -> unit)
+                      
+  let _mail_or_quit c = (function
+    | `MAIL(_) as m -> _mail c m
+    | `QUIT(_) as m -> _quit c m
+                : [`MAIL of _ | `QUIT of _] -> unit)
+
+end  
 
 
-let escape : string -> string list = Str.split (Str.regexp "\n") (*FIXME*)
+type 'p cont = ('p,cli,tcp) sess
 
-type 'a t = <s:'a>
-[@@runner][@@deriving lens]
+type smtp =
+  [`branch of resp * [`_200 of string list data *
+  [`branch of req * [`EHLO of string *
+  [`branch of resp * [`_200 of string list data *
+  mailloop cont]] cont]] cont]]
+and mailloop =
+  [`branch of req *
+    [`MAIL of string *
+      [`branch of resp * [`_200 of string list data * rcptloop cont]] cont
+    |`QUIT of
+      [`close] cont]]
+and rcptloop =
+  [`branch of req * 
+    [`RCPT of string *
+      [`branch of resp * 
+        [`_200 of string list data * 
+          rcptloop cont
+        |`_500 of string list data *
+          [`branch of req * [`QUIT of 
+          [`close] cont]] cont]] cont
+    |`DATA of 
+      [`branch of resp * [`_354 of string list data *
+      [`msg of req * mailbody * 
+      [`branch of resp * [`_200 of string list data *
+      mailloop cont]]] cont]] cont]]
+
+(* declare slot s *)
+type 'a t = <s:'a>[@@runner][@@deriving lens]
 
 open Tcp
 
-let smtp_client host port from to_ mailbody =
-  let smtp : ('p,tcp) connector = connector ~host ~port in
+(* let tcp : (('p,cli,tcp) sess, ('p,cli,tcp) sess, 'pre, 'pre) slot -> ('pre, 'pre, unit lin) monad = fun _ -> return () *)
+let tcp : (('p,cli,tcp) sess, empty, 'pre, 'post) slot -> ('pre, 'post, ('p,cli,tcp) sess) monad = fun s -> get s
+
+let smtp_client host port from to_ mailbody () =
+  let smtp : (smtp,tcp) connector = connector ~host ~port in
   let%lin #s = connect smtp in
-  let%lin (`_200(_,#s)) = branch s in
+  let%lin `_200(msg,#s) = branch s in
+  List.iter print_endline msg;
+  select s (fun x -> `EHLO("me.example.com",x)) >>
+  let%lin `_200(_,#s) =  branch s in
+  select s (fun x -> `MAIL(from,x)) >>
+  let%lin `_200(_,#s) = branch s in
+  select s (fun x -> `RCPT(to_,x)) >>
+  branch s >>=
+    (function%lin
+           | `_200(_,#s) ->
+              select s (fun x -> `DATA(x)) >>
+              let%lin `_354(_, #s) = branch s in
+              send s (MailBody mailbody) >>
+              let%lin `_200(msg, #s) = branch s in
+              print_string "Email sent: ";
+              List.iter print_endline msg;
+              select s (fun x -> `QUIT(x))
+           | `_500 (msg,#s) ->
+              print_endline "Email sending failed. Detail:";
+              List.iter print_endline msg;
+              select s (fun x -> `QUIT(x))
+              : ([`_200 of _ | `_500 of _] lin,_,_,_) bindfun) >>
   close s
-                                   
-(* let smtp_client host port from to_ mailbody = *)
-(*   let smtp : ('p,tcp) connector = Tcp.connector ~host ~port in *)
-(*   let%lin #s = connect smtp in *)
-(*     let%lin (`_200(#s)) = branch s in *)
-(*     send s (EHLO("me.example.com")) >>  let%s R200 _ = recv () in *)
-(*     select_left () >> (\* enter into the main loop *\) *)
-(*     send (MAIL(from)) >>  let%s R200 _ = recv () in *)
-(*     select_left () >> (\* enter into recipient loop *\) *)
-(*     send (RCPT(to_))   >> *)
-(*     branch2 (fun () -> let%s R200 _ = recv () in (\* recipient Ok *\) *)
-(*                        select_right () >> (\* proceed to sending the mail body *\) *)
-(*                        send DATA              >> let%s R354 _ = recv () in *)
-(*                        send (escape mailbody) >> let%s R200 _ = recv () in *)
-(*                        select_right () >> send QUIT >> close ()) *)
-(*             (fun () -> let%s R500 msg = recv () in (\* a recipient is rejected *\) *)
-(*                        (print_endline "ERROR:"; List.iter print_endline msg; send QUIT) >> close ()) end () *)
 
-
-(* let () = *)
-(*   if Array.length Sys.argv <> 5 then begin *)
-(*       print_endline ("Usage: " ^ Sys.argv.(0) ^ " host:port from to body"); *)
-(*       exit 1 *)
-(*     end; *)
-(*   smtp_client Sys.argv.(1) Sys.argv.(2) Sys.argv.(3) Sys.argv.(4) *)
+let () =
+  if Array.length Sys.argv <> 6 then begin
+      print_endline ("Usage: " ^ Sys.argv.(0) ^ " host port from to body");
+      exit 1
+    end;
+  run_t (smtp_client Sys.argv.(1) (int_of_string Sys.argv.(2)) Sys.argv.(3) Sys.argv.(4) Sys.argv.(5)) ()

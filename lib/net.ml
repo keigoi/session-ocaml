@@ -20,8 +20,11 @@ module type SESSION = sig
   val _mksess : 'c -> ('p,'q,'c) sess
 
   (* connectors *)
-  type ('p,'c) connector = unit -> 'c io
-  type ('p,'c) acceptor = unit -> 'c io
+  type ('p,'c) connector
+  type ('p,'c) acceptor
+
+  val create_connector : (unit -> 'c io) -> ('p,'c) connector
+  val create_acceptor : (unit -> 'c io) -> ('p,'c) acceptor
 
   module Sender : sig
     type ('c,'v) t = ('c -> 'v -> unit io, [%imp Senders]) Ppx_implicits.t
@@ -64,7 +67,7 @@ module type SESSION = sig
   val select
       :  ?_sender:('c,'br) Sender.t
          -> (([`branch of 'r1 * 'br],'r1*'r2,'c) sess, ('p,'r1*'r2,'c) sess, 'pre, 'post) slot
-         -> (('p,'r2*'r1,'c) sess -> 'br)
+         -> (('p,'r1*'r2,'c) sess -> 'br)
          -> ('pre, 'post, unit lin) monad
 
   val branch
@@ -119,6 +122,9 @@ module Make(LinIO:Linocaml.Base.LIN_IO)
 
   type ('p,'c) connector = unit -> 'c io
   type ('p,'c) acceptor = unit -> 'c io
+
+  let create_connector f = f
+  let create_acceptor f = f
 
   type (_, _, 'c) sess_ = 'c
    and ('p, 'q, 'c) sess = ('p,'q,'c) sess_ lin
