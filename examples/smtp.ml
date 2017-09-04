@@ -18,67 +18,61 @@ type mailbody = MailBody of string
 (* Instance declaration for SMTP reply deserialisers *)
 module Receivers = struct
 
-  let crlf = (Str.regexp "\r\n")
-  let msgbody s = String.sub s 4 (String.length s-4)
 
-  let rec parse_reply assoc tcp =
-    let buf = Bytes.create bufsize in
-    let read_buf () =
-      let len_read = input tcp.in_ buf 0 bufsize in
-      Bytes.sub_string buf 0 len_read
-    in
-    let get_line = 
-      let rec get_line_aux str leftover =
-        match Str.bounded_split_delim crlf leftover 2 with (* splits "L1\r\nL2\r\nL3" into ["L1"; "L2\r\nL3"] *)
-        | [line; rest] ->  
-           line, rest
-        | [] -> (* no CRLF. read further *)
-           let read = read_buf () in
-           if read<>"" then
-             get_line_aux (str^leftover) read (* try to find CRLF again *)
-           else
-             str^leftover, "" (* EOF *)
-        | _ -> assert false
-      in
-      get_line_aux ""
-    in
-    let read_chunk = 
-      let rec read_chunk_aux lines left =
-        let line, rest = get_line left in
+  let rec parse_reply table tcp =
+    let read_chunk () =
+      let rec read_chunk_aux lines =
+        let line = input_line tcp.in_ in
+        (* remove trailing \r *)
+        let line =
+          let len = String.length line in
+          if len > 0 && line.[len-1] = '\r'
+          then String.sub line 0 (len-1)
+          else line
+        in
         if line.[3] = '-' then
           (* chunk continues. get the next line *)
-          read_chunk_aux (line::lines) rest
+          read_chunk_aux (line::lines)
         else
           (* chunk terminated *)
-          List.rev (line::lines), rest
+          List.rev (line::lines)
       in
       read_chunk_aux []
     in
-    let lines, left = read_chunk tcp.in_leftover in
-    tcp.in_leftover <- left;
+    let lines = read_chunk () in
     match lines with
     | [] -> assert false
     | first::_ ->
        if String.length first = 0 then
          failwith ("Parse error :" ^ String.concat "\r\n" lines)
        else
+         (* get message constructor from the table*)
          let f =
            try
-           List.assoc first.[0] assoc
-         with
-         | Not_found ->
-            failwith ("Parse error : expected "
-                      ^ String.concat " or " (List.map Char.escaped (fst (List.split assoc)))
-                      ^ " but got:\r\n" ^ String.concat "\r\n" lines)
+             List.assoc first.[0] table
+           with
+           | Not_found ->
+              failwith ("Parse error : expected "
+                        ^ String.concat " or " (List.map Char.escaped (fst (List.split table)))
+                        ^ " but got:\r\n" ^ String.concat "\r\n" lines)
+         in
+         let msgbody s = String.sub s 4 (String.length s-4)
          in
          f tcp (List.map msgbody lines)
 
-  let r200 = ('2', (fun c x -> `_200(Linocaml.Base.Data_Internal__ x,_mksess c)))
-  let r354 = ('3', (fun c x -> `_354(Linocaml.Base.Data_Internal__ x,_mksess c)))
-  let r500 = ('5', (fun c x -> `_500(Linocaml.Base.Data_Internal__ x,_mksess c)))
-  let _200 c : [`_200 of _ * _] = parse_reply [r200] c
-  let _200_or_500 c : [`_200 of _ * _ | `_500 of _ * _] = parse_reply [r200; r500] c
-  let _354 c : [`_354 of _ * _] = parse_reply [r354] c
+  let r200 = ('2', (fun tcp msg -> `_200(Linocaml.Base.Data_Internal__ msg, _mksess tcp)))
+  let r354 = ('3', (fun tcp msg -> `_354(Linocaml.Base.Data_Internal__ msg, _mksess tcp)))
+  let r500 = ('5', (fun tcp msg -> `_500(Linocaml.Base.Data_Internal__ msg, _mksess tcp)))
+
+  let _200
+      : tcp -> [`_200 of _ * _]
+    = fun c -> parse_reply [r200] c
+  let _200_or_500
+      : tcp -> [`_200 of _ * _ | `_500 of _ * _] 
+    = fun c -> parse_reply [r200; r500] c
+  let _354
+      : tcp -> [`_354 of _ * _]
+    = fun c -> parse_reply [r354] c
 
 end
 
@@ -143,12 +137,7 @@ type 'a t = <s:'a>[@@runner][@@deriving lens]
 
 open Tcp
 
-(* let tcp : (('p,cli,tcp) sess, ('p,cli,tcp) sess, 'pre, 'pre) slot -> ('pre, 'pre, unit lin) monad = fun _ -> return () *)
-let tcp : (('p,cli,tcp) sess, empty, 'pre, 'post) slot -> ('pre, 'post, ('p,cli,tcp) sess) monad = fun s -> get s
-
-let smtp_client host port from to_ mailbody () =
-  let smtp : (smtp,tcp) connector = connector ~host ~port in
-  let%lin #s = connect smtp in
+let sendmail host port from to_ mailbody () : (<s:(smtp,cli,tcp) sess> lin, <s:empty> lin, unit lin) monad =
   let%lin `_200(msg,#s) = branch s in
   List.iter print_endline msg;
   select s (fun x -> `EHLO("me.example.com",x)) >>
@@ -172,6 +161,11 @@ let smtp_client host port from to_ mailbody () =
               select s (fun x -> `QUIT(x))
               : ([`_200 of _ | `_500 of _] lin,_,_,_) bindfun) >>
   close s
+  
+let smtp_client host port from to_ mailbody () =
+  let smtp : (smtp,tcp) connector = connector ~host ~port in
+  let%lin #s = connect smtp in
+  sendmail host port from to_ mailbody ()
 
 let () =
   if Array.length Sys.argv <> 6 then begin
