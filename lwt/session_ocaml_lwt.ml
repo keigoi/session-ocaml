@@ -13,4 +13,4 @@ module Chan = Session_ocaml.Channel.Make
                   let wait c m = Lwt_condition.wait ~mutex:m c
                 end)
 
-include Base.Make(Linocaml_lwt)(Chan)
+include Session_ocaml.Base.Make(Linocaml_lwt)(Chan)
