@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 47a595e52fb6884c7be363c145546482)
+# DO NOT EDIT (digest: 88e2fa4c40ab4e84337cdf6acd34506a)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -19,6 +19,7 @@ true: annot, bin_annot
 "lib/base.cmx": for-pack(Session_ocaml)
 "lib/direct.cmx": for-pack(Session_ocaml)
 "lib/net.cmx": for-pack(Session_ocaml)
+"lib/synchronous.cmx": for-pack(Session_ocaml)
 "lib/channel.cmx": for-pack(Session_ocaml)
 "lib/dchannel.cmx": for-pack(Session_ocaml)
 "lib/unsafe.cmx": for-pack(Session_ocaml)

@@ -67,7 +67,7 @@ module type SESSION = sig
   val select
       :  ?_sender:('c,'br) Sender.t
          -> (([`branch of 'r1 * 'br],'r1*'r2,'c) sess, ('p,'r1*'r2,'c) sess, 'pre, 'post) slot
-         -> (('p,'r1*'r2,'c) sess -> 'br)
+         -> (('p,'r2*'r1,'c) sess -> 'br)
          -> ('pre, 'post, unit lin) monad
 
   val branch

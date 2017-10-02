@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 81db59f06385bbf8ed84cf4c8a469d5d) *)
+(* DO NOT EDIT (digest: c1ecd1d2f589dd0da56cfc3aba0aa793) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -887,7 +887,7 @@ let package_default =
           (["oasis_library_session_ocaml_byte"; "ocaml"; "link"; "byte"],
             [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
           (["oasis_library_session_ocaml_native"; "ocaml"; "link"; "native"],
-            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"; A "-O3"])]);
           (["oasis_library_session_ocaml_byte"; "ocaml"; "ocamldep"; "byte"],
             [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
           ([
@@ -896,7 +896,7 @@ let package_default =
               "ocamldep";
               "native"
            ],
-            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"; A "-O3"])]);
           (["oasis_library_session_ocaml_byte"; "ocaml"; "compile"; "byte"],
             [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
           ([
@@ -905,7 +905,7 @@ let package_default =
               "compile";
               "native"
            ],
-            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"; A "-O3"])]);
           (["oasis_library_session_ocaml_lwt_byte"; "ocaml"; "link"; "byte"],
             [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
           ([

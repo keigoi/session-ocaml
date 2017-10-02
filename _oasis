@@ -17,13 +17,13 @@ Library session_ocaml
   Path:       lib
   Pack: true
   Modules:
-    Base, Direct, Net
+    Base, Direct, Net, Synchronous
   InternalModules:
     Channel, Dchannel, Unsafe
   BuildDepends:
     threads, str, linocaml, ppx_implicits
   ByteOpt: -I +threads
-  NativeOpt: -I +threads
+  NativeOpt: -I +threads -O3
 
 Library session_ocaml_lwt
   Build$:        flag(lwt)
