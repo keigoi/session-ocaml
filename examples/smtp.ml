@@ -65,13 +65,13 @@ module Receivers = struct
   let r500 = ('5', (fun tcp msg -> `_500(Linocaml.Base.Data_Internal__ msg, _mksess tcp)))
 
   let _200
-      : tcp -> [`_200 of _ * _]
+      : stream -> [`_200 of _ * _]
     = fun c -> parse_reply [r200] c
   let _200_or_500
-      : tcp -> [`_200 of _ * _ | `_500 of _ * _] 
+      : stream -> [`_200 of _ * _ | `_500 of _ * _] 
     = fun c -> parse_reply [r200; r500] c
   let _354
-      : tcp -> [`_354 of _ * _]
+      : stream -> [`_354 of _ * _]
     = fun c -> parse_reply [r354] c
 
 end
@@ -104,19 +104,20 @@ module Senders = struct
 end  
 
 
-type 'p cont = ('p,cli,tcp) sess
+type 'p cont = ('p,cli,stream) sess
+type 'p contR = ('p,serv,stream) sess
 
 type smtp =
   [`branch of resp * [`_200 of string list data *
   [`branch of req * [`EHLO of string *
   [`branch of resp * [`_200 of string list data *
-  mailloop cont]] cont]] cont]]
+  mailloop cont]] contR]] cont]]
 and mailloop =
   [`branch of req *
     [`MAIL of string *
-      [`branch of resp * [`_200 of string list data * rcptloop cont]] cont
+      [`branch of resp * [`_200 of string list data * rcptloop cont]] contR
     |`QUIT of
-      [`close] cont]]
+      [`close] contR]]
 and rcptloop =
   [`branch of req * 
     [`RCPT of string *
@@ -125,19 +126,19 @@ and rcptloop =
           rcptloop cont
         |`_500 of string list data *
           [`branch of req * [`QUIT of 
-          [`close] cont]] cont]] cont
+          [`close] contR]] cont]] contR
     |`DATA of 
       [`branch of resp * [`_354 of string list data *
       [`msg of req * mailbody * 
       [`branch of resp * [`_200 of string list data *
-      mailloop cont]]] cont]] cont]]
+      mailloop cont]]] cont]] contR]]
 
 (* declare slot s *)
 type 'a t = <s:'a>[@@runner][@@deriving lens]
 
 open Tcp
 
-let sendmail host port from to_ mailbody () : (<s:(smtp,cli,tcp) sess> lin, <s:empty> lin, unit lin) monad =
+let sendmail host port from to_ mailbody () : (<s:(smtp,cli,stream) sess> lin, <s:empty> lin, unit lin) monad =
   let%lin `_200(msg,#s) = branch s in
   List.iter print_endline msg;
   select s (fun x -> `EHLO("me.example.com",x)) >>
@@ -163,7 +164,7 @@ let sendmail host port from to_ mailbody () : (<s:(smtp,cli,tcp) sess> lin, <s:e
   close s
   
 let smtp_client host port from to_ mailbody () =
-  let smtp : (smtp,tcp) connector = connector ~host ~port in
+  let smtp : (smtp,stream) connector = connector ~host ~port in
   let%lin #s = connect smtp in
   sendmail host port from to_ mailbody ()
 

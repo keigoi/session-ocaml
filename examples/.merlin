@@ -1,5 +1,5 @@
 B +threads
-PKG linocaml.ppx linocaml.ppx_lens session_ocaml
+PKG linocaml.ppx linocaml.ppx_lens ppx_implicits session_ocaml mysql core
 FLG -short-paths
 
 S .

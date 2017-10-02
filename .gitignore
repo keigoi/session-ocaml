@@ -5,6 +5,8 @@
 *.annot
 test.*
 *.top
+*.opt
+*.out
 \#*
 \.\#*
 
