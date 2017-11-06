@@ -26,26 +26,26 @@ module type SESSION = sig
   val connect : 'p channel -> ('pre, 'pre, ('p, cli) sess) monad
 
   val close : (([`close], 'r1*'r2) sess, empty, 'pre, 'post) slot -> ('pre, 'post, unit lin) monad
-  val send : (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot -> 'v -> ('pre, 'post, unit lin) monad
-  val receive : (([`msg of 'r2 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot -> ('pre, 'post, 'v data lin) monad
+  val send : 'v -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot -> ('pre, 'post, ('p, 'r1*'r2) sess) monad
+  val receive : (([`msg of 'r2 * 'v * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot -> ('pre, 'post, ('v data * ('p, 'r1*'r2) sess) lin) monad
 
-  val select
-      :  (([`branch of 'r1 * 'br],'r1*'r2) sess, ('p,'r1*'r2) sess, 'pre, 'post) slot
-         -> (('p,'r2*'r1) sess -> 'br)
-         -> ('pre, 'post, unit lin) monad
+  val select :
+         (('p,'r2*'r1) sess -> 'br)
+         -> (([`branch of 'r1 * 'br],'r1*'r2) sess, empty, 'pre, 'post) slot
+         -> ('pre, 'post, ('p,'r1*'r2) sess) monad
 
-  val branch
-      :  (([`branch of 'r2 * 'br], 'r1*'r2) sess, empty, 'pre, 'post) slot
+  val branch :
+         (([`branch of 'r2 * 'br], 'r1*'r2) sess, empty, 'pre, 'post) slot
          -> ('pre, 'post, 'br lin) monad
 
   val deleg_send
-      : (([`deleg of 'r1 * ('pp, 'rr) sess * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'mid) slot
+      : (([`deleg of 'r1 * ('pp, 'rr) sess * 'p], 'r1*'r2) sess, empty, 'pre, 'mid) slot
         -> (('pp, 'rr) sess, empty, 'mid, 'post) slot
-        -> ('pre, 'post, unit lin) monad
+        -> ('pre, 'post, ('p, 'r1*'r2) sess) monad
 
   val deleg_recv
-      : (([`deleg of 'r2 * ('pp, 'rr) sess * 'p], 'r1*'r2) sess, ('p,'r1*'r2) sess, 'pre, 'post) slot
-        -> ('pre, 'post, ('pp,'rr) sess) monad
+      : (([`deleg of 'r2 * ('pp, 'rr) sess * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot
+        -> ('pre, 'post, (('pp,'rr) sess * ('p,'r1*'r2) sess) lin) monad
     
   val create : unit -> ('pre, 'pre, (('p, cli) sess * ('p, serv) sess) lin) monad
 end
@@ -113,36 +113,36 @@ module Make(LinIO:Linocaml.Base.LIN_IO)(Chan:Channel.S with type 'a io = 'a LinI
         LinIO.IO.return (put pre Empty, Lin_Internal__ ())
       end
     
-  let send : (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot -> 'v -> ('pre, 'post, unit lin) monad =
-    fun {get;put} v ->
+  let send : 'v -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot -> ('pre, 'post, ('p, 'r1*'r2) sess) monad =
+    fun v {get;put} ->
     LinIO.Internal.__monad begin
         fun pre ->
         let s = unsess (get pre) in
         Uchan.send s v >>= fun _ ->
-        LinIO.IO.return (put pre (mksess s), Lin_Internal__ ())
+        LinIO.IO.return (put pre Empty, mksess s)
       end
-      
-  let receive : (([`msg of 'r2 * 'v * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot -> ('pre, 'post, 'v data lin) monad =
+
+  let receive : (([`msg of 'r2 * 'v * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot -> ('pre, 'post, ('v data * ('p, 'r1*'r2) sess) lin) monad =
     fun {get;put} ->
     LinIO.Internal.__monad begin
         fun pre ->
         let s = unsess (get pre) in
         Uchan.receive s >>= fun x ->
-        LinIO.IO.return (put pre (mksess s), Lin_Internal__ (Data_Internal__ x))
+        LinIO.IO.return (put pre Empty, Lin_Internal__ (Data_Internal__ x, mksess s))
       end
 
   let select
-      :  (([`branch of 'r1 * 'br],'r1*'r2) sess, ('p,'r1*'r2) sess, 'pre, 'post) slot
-         -> (('p,'r2*'r1) sess -> 'br)
-         -> ('pre, 'post, unit lin) monad =
-    fun {get;put} f ->
+      :  (('p,'r2*'r1) sess -> 'br)
+         -> (([`branch of 'r1 * 'br],'r1*'r2) sess, empty, 'pre, 'post) slot
+         -> ('pre, 'post, ('p,'r1*'r2) sess) monad =
+    fun f {get;put} ->
     LinIO.Internal.__monad begin
         fun pre ->
         let s = unsess (get pre) in
         Uchan.send s (f (mksess (Uchan.reverse s))) >>= fun _ ->
-        LinIO.IO.return (put pre (mksess s), Lin_Internal__ ())
+        LinIO.IO.return (put pre Empty, mksess s)
       end
-        
+
   let branch
       :  (([`branch of 'r2 * 'br], 'r1*'r2) sess, empty, 'pre, 'post) slot
          -> ('pre, 'post, 'br lin) monad =
@@ -155,28 +155,28 @@ module Make(LinIO:Linocaml.Base.LIN_IO)(Chan:Channel.S with type 'a io = 'a LinI
       end
         
   let deleg_send
-      : (([`deleg of 'r1 * ('pp, 'rr) sess * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'mid) slot
+      : (([`deleg of 'r1 * ('pp, 'rr) sess * 'p], 'r1*'r2) sess, empty, 'pre, 'mid) slot
         -> (('pp, 'rr) sess, empty, 'mid, 'post) slot
-        -> ('pre, 'post, unit lin) monad =
+        -> ('pre, 'post, ('p, 'r1*'r2) sess) monad =
     fun s1_ s2_ ->
     LinIO.Internal.__monad begin
         fun pre ->
         let s1 = unsess (s1_.get pre) in
-        let mid = s1_.put pre (mksess s1) in
+        let mid = s1_.put pre Empty in
         let s2 = s2_.get mid in
         let post = s2_.put mid Empty in
         Uchan.send s1 s2 >>= fun x ->
-        LinIO.IO.return (post, Lin_Internal__ ())
+        LinIO.IO.return (post, mksess s1)
       end
 
   let deleg_recv
-      : (([`deleg of 'r2 * ('pp, 'rr) sess * 'p], 'r1*'r2) sess, ('p, 'r1*'r2) sess, 'pre, 'post) slot
-        -> ('pre, 'post, ('pp,'rr) sess) monad =
+      : (([`deleg of 'r2 * ('pp, 'rr) sess * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot
+        -> ('pre, 'post, (('pp,'rr) sess * ('p,'r1*'r2) sess) lin) monad =
     fun {get;put} ->
     LinIO.Internal.__monad begin
         fun pre ->
         let s1 = unsess (get pre) in
         Uchan.receive s1 >>= fun s2 ->
-        LinIO.IO.return (put pre (mksess s1), s2)
+        LinIO.IO.return (put pre Empty, Lin_Internal__ (s2, mksess s1))
       end
 end

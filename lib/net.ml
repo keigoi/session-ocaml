@@ -59,16 +59,16 @@ module type SESSION = sig
     (([`close], 'r1*'r2, 'c) sess, empty, 'pre, 'post) slot -> ('pre, 'post, unit lin) monad
   val send :
     ?_sender:('c, 'v) Sender.t ->
-    (([`msg of 'r1 * 'v * 'p], 'r1*'r2, 'c) sess, ('p, 'r1*'r2, 'c) sess, 'pre, 'post) slot -> 'v -> ('pre, 'post, unit lin) monad
+    'v -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2, 'c) sess, empty, 'pre, 'post) slot -> ('pre, 'post, ('p, 'r1*'r2, 'c) sess) monad
   val receive :
     ?_receiver:('c, 'v) Receiver.t ->
-    (([`msg of 'r2 * 'v * 'p], 'r1*'r2, 'c) sess, ('p, 'r1*'r2, 'c) sess, 'pre, 'post) slot -> ('pre, 'post, 'v data lin) monad
+    (([`msg of 'r2 * 'v * 'p], 'r1*'r2, 'c) sess, empty, 'pre, 'post) slot -> ('pre, 'post, ('v data * ('p, 'r1*'r2, 'c) sess) lin) monad
 
   val select
       :  ?_sender:('c,'br) Sender.t
-         -> (([`branch of 'r1 * 'br],'r1*'r2,'c) sess, ('p,'r1*'r2,'c) sess, 'pre, 'post) slot
          -> (('p,'r2*'r1,'c) sess -> 'br)
-         -> ('pre, 'post, unit lin) monad
+         -> (([`branch of 'r1 * 'br],'r1*'r2,'c) sess, empty, 'pre, 'post) slot
+         -> ('pre, 'post, ('p,'r1*'r2,'c) sess) monad
 
   val branch
       :  ?_receiver:('c,'br) Receiver.t
@@ -186,39 +186,39 @@ module Make(LinIO:Linocaml.Base.LIN_IO)
         LinIO.IO.return (put pre Empty, Lin_Internal__ ())
       end
     
-  let send : ?_sender:('c,'v) Sender.t -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2, 'c) sess, ('p, 'r1*'r2, 'c) sess, 'pre, 'post) slot -> 'v -> ('pre, 'post, unit lin) monad =
-    fun ?_sender {get;put} v ->
+  let send : ?_sender:('c,'v) Sender.t -> 'v -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2, 'c) sess, empty, 'pre, 'post) slot -> ('pre, 'post, ('p, 'r1*'r2, 'c) sess) monad =
+    fun ?_sender v {get;put} ->
     LinIO.Internal.__monad begin
         fun pre ->
         let conn = unsess (get pre) in
         let sender = Sender.unpack @@ untrans _sender in
         let open LinIO.IO in
         sender conn v >>= fun () ->
-        LinIO.IO.return (put pre (mksess conn), Lin_Internal__ ())
+        LinIO.IO.return (put pre Empty, mksess conn)
       end
       
-  let receive : ?_receiver:('c,'v) Receiver.t -> (([`msg of 'r2 * 'v * 'p], 'r1*'r2, 'c) sess, ('p, 'r1*'r2, 'c) sess, 'pre, 'post) slot -> ('pre, 'post, 'v data lin) monad =
+  let receive : ?_receiver:('c,'v) Receiver.t -> (([`msg of 'r2 * 'v * 'p], 'r1*'r2, 'c) sess, empty, 'pre, 'post) slot -> ('pre, 'post, ('v data * ('p, 'r1*'r2, 'c) sess) lin) monad =
     fun ?_receiver {get;put} ->
     LinIO.Internal.__monad begin
         fun pre ->
         let conn = unsess (get pre) in
         let receiver = Receiver.unpack @@ untrans _receiver in
         receiver conn >>= fun x ->
-        LinIO.IO.return (put pre (mksess conn), Lin_Internal__ (Data_Internal__ x))
+        LinIO.IO.return (put pre Empty, Lin_Internal__ (Data_Internal__ x, mksess conn))
       end
 
   let select
       :  ?_sender:('c,'br) Sender.t
-         -> (([`branch of 'r1 * 'br],'r1*'r2, 'c) sess, ('p,'r1*'r2, 'c) sess, 'pre, 'post) slot
          -> (('p,'r2*'r1, 'c) sess -> 'br)
-         -> ('pre, 'post, unit lin) monad =
-    fun ?_sender {get;put} f ->
+         -> (([`branch of 'r1 * 'br],'r1*'r2, 'c) sess, empty, 'pre, 'post) slot
+         -> ('pre, 'post, ('p,'r1*'r2, 'c) sess) monad =
+    fun ?_sender f {get;put} ->
     LinIO.Internal.__monad begin
         fun pre ->
         let conn = unsess (get pre) in
         let sender = Sender.unpack @@ untrans _sender in
         sender conn (f (Obj.magic ())) >>= fun _ ->
-        LinIO.IO.return (put pre (mksess conn), Lin_Internal__ ())
+        LinIO.IO.return (put pre Empty, mksess conn)
       end
         
   let branch

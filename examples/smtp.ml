@@ -141,26 +141,27 @@ open Tcp
 let sendmail host port from to_ mailbody () : (<s:(smtp,cli,stream) sess> lin, <s:empty> lin, unit lin) monad =
   let%lin `_200(msg,#s) = branch s in
   List.iter print_endline msg;
-  select s (fun x -> `EHLO("me.example.com",x)) >>
+  let%lin #s = select (fun x -> `EHLO("me.example.com",x)) s in
   let%lin `_200(_,#s) =  branch s in
-  select s (fun x -> `MAIL(from,x)) >>
+  let%lin #s = select (fun x -> `MAIL(from,x)) s in
   let%lin `_200(_,#s) = branch s in
-  select s (fun x -> `RCPT(to_,x)) >>
-  branch s >>=
-    (function%lin
-           | `_200(_,#s) ->
-              select s (fun x -> `DATA(x)) >>
-              let%lin `_354(_, #s) = branch s in
-              send s (MailBody mailbody) >>
-              let%lin `_200(msg, #s) = branch s in
-              print_string "Email sent: ";
-              List.iter print_endline msg;
-              select s (fun x -> `QUIT(x))
-           | `_500 (msg,#s) ->
-              print_endline "Email sending failed. Detail:";
-              List.iter print_endline msg;
-              select s (fun x -> `QUIT(x))
-              : ([`_200 of _ | `_500 of _] lin,_,_,_) bindfun) >>
+  let%lin #s = select (fun x -> `RCPT(to_,x)) s in
+  begin match%lin branch s with
+  | `_200(_,#s) ->
+     let%lin #s = select (fun x -> `DATA(x)) s in
+     let%lin `_354(_, #s) = branch s in
+     let%lin #s = send (MailBody mailbody) s in
+     let%lin `_200(msg, #s) = branch s in
+     print_string "Email sent: ";
+     List.iter print_endline msg;
+     let%lin #s = select (fun x -> `QUIT(x)) s in
+     return ()
+  | `_500 (msg,#s) ->
+     print_endline "Email sending failed. Detail:";
+     List.iter print_endline msg;
+     let%lin #s = select (fun x -> `QUIT(x)) s in
+     return ()
+  end >>
   close s
   
 let smtp_client host port from to_ mailbody () =
