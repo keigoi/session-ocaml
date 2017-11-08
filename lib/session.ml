@@ -150,7 +150,7 @@ module type Adapter = sig
 end
 
 module Syntax = struct
-  let (>>=) = (>>=)
+  let bind = (>>=)
   module Session0 = struct
     let _select = Session0._select
     let _branch_start = Session0._branch_start

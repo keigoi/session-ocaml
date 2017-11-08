@@ -139,7 +139,7 @@ module type Adapter = sig
 end
 
 module Syntax : sig
-  val (>>=) : ('x,'y,'a) monad -> ('a -> ('y, 'z, 'b) monad) -> ('x,'z,'b) monad
+  val bind : ('x,'y,'a) monad -> ('a -> ('y, 'z, 'b) monad) -> ('x,'z,'b) monad
   module Session0 : sig
     val _select
       :  ('p -> 'br)

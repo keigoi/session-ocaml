@@ -1,21 +1,14 @@
 
-type ('a,'b) cxt = <cli:'a; wrk:'b>
-[@@deriving lens]
-
-open Session
-open SessionN
+open Lsession
 ;;
 
-  
-let%w x = recv _0
-and y = recv _0
-in return ()    
-;;
 
 let ch = new_channel ()
 ;;
+let s = _0
 
-let f = 
-  let%lin #cli = accept ch in
-  return ()
-   
+let f () = 
+  let%lin #s = accept ch in
+  let%lin #s = send 100 s in
+  close s
+

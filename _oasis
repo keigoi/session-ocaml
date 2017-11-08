@@ -12,8 +12,9 @@ Library "session-ocaml"
   Path:       lib
   BuildTools: ocamlbuild
   Modules:
-    Session, UnixAdapter
+    Session, UnixAdapter, Lsession
   InternalModules:
+    Schannel,
     Channel,
     Monitor
   ByteOpt: -rectypes
@@ -30,17 +31,6 @@ Library ppx
   XMETARequires: session-ocaml, ppx_deriving
   XMETAExtraLines: ppx = "ppx_session"
   BuildDepends: compiler-libs, ppx_tools.metaquot, ppx_deriving.api
-
-Library ppx_lens
-  Path: ppx
-  BuildTools: ocamlbuild
-  Modules: Ppx_lens
-  FindlibName: ppx_lens
-  FindlibParent: session-ocaml
-  XMETAType: syntax
-  XMETARequires: ppx_deriving, session-ocaml
-  XMetaExtraLines: ppxopt = "ppx_deriving,./ppx_lens.cma"
-  BuildDepends: compiler-libs, ppx_deriving
 
 Executable ppx_session
   Path: ppx

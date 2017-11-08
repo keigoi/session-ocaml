@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: c78289b7d3f993374d15920e783d18c8)
+# DO NOT EDIT (digest: 497f5f2ed7f2793dff706d9e0540a2c6)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -24,10 +24,7 @@ true: annot, bin_annot
 <lib/*.ml{,i,y}>: pkg_threads
 # Library ppx
 "ppx/ppx.cmxs": use_ppx
-# Library ppx_lens
-"ppx/ppx_lens.cmxs": use_ppx_lens
 <ppx/*.ml{,i,y}>: pkg_compiler-libs
-<ppx/*.ml{,i,y}>: pkg_ppx_deriving
 # Executable ppx_session
 <ppx/ppx_session_ex.{native,byte}>: pkg_compiler-libs.common
 <ppx/ppx_session_ex.{native,byte}>: pkg_ppx_deriving.api

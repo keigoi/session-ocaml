@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 594b6b912e4b10f19f41e35e62b1e032)
+# DO NOT EDIT (digest: 2e4362156c51815f622a90a141d7667a)
 version = "0.1"
 description =
 "A concurrent / distributed programming with protocol typing, based on Session Types."
@@ -9,19 +9,6 @@ archive(byte, plugin) = "session-ocaml.cma"
 archive(native) = "session-ocaml.cmxa"
 archive(native, plugin) = "session-ocaml.cmxs"
 exists_if = "session-ocaml.cma"
-package "ppx_lens" (
- version = "0.1"
- description =
- "A concurrent / distributed programming with protocol typing, based on Session Types."
- requires = "ppx_deriving session-ocaml"
- archive(syntax, preprocessor) = "ppx_lens.cma"
- archive(syntax, toploop) = "ppx_lens.cma"
- archive(syntax, preprocessor, native) = "ppx_lens.cmxa"
- archive(syntax, preprocessor, native, plugin) = "ppx_lens.cmxs"
- ppxopt = "ppx_deriving,./ppx_lens.cma"
- exists_if = "ppx_lens.cma"
-)
-
 package "ppx" (
  version = "0.1"
  description =
