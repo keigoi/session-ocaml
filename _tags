@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 497f5f2ed7f2793dff706d9e0540a2c6)
+# DO NOT EDIT (digest: ce1ea11ddbd0478b54c6b8b2e102f06c)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -25,6 +25,15 @@ true: annot, bin_annot
 # Library ppx
 "ppx/ppx.cmxs": use_ppx
 <ppx/*.ml{,i,y}>: pkg_compiler-libs
+# Library net
+"net/net.cmxs": use_net
+<net/net.{cma,cmxa}>: oasis_library_net_byte
+<net/*.ml{,i,y}>: oasis_library_net_byte
+<net/net.{cma,cmxa}>: oasis_library_net_native
+<net/*.ml{,i,y}>: oasis_library_net_native
+<net/*.ml{,i,y}>: pkg_ppx_implicits
+<net/*.ml{,i,y}>: pkg_str
+<net/*.ml{,i,y}>: pkg_threads
 # Executable ppx_session
 <ppx/ppx_session_ex.{native,byte}>: pkg_compiler-libs.common
 <ppx/ppx_session_ex.{native,byte}>: pkg_ppx_deriving.api

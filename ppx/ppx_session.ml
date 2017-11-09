@@ -117,17 +117,17 @@ let lin_pattern oldpat =
     let replace_linpat ({loc} as linvar) =
       let newvar = newname "match" in
       lin_vars := (linvar,newvar) :: !lin_vars;
-      pconstr ~loc "Lsession.L" [pvar ~loc newvar]
+      pconstr ~loc "L" [pvar ~loc newvar]
       
     and wrap_datapat ({ppat_loc} as pat) =
-      pconstr ~loc:ppat_loc "Lsession.W" [pat]
+      pconstr ~loc:ppat_loc "W" [pat]
     in
     let newpat = traverse wrap_datapat replace_linpat oldpat in
     let newpat =
       if is_linpat oldpat then
         newpat (* not to duplicate Lin pattern *)
       else
-        pconstr ~loc:ppat_loc "Lsession.L" [newpat]
+        pconstr ~loc:ppat_loc "L" [newpat]
     in
     newpat, List.rev !lin_vars
   in
@@ -159,14 +159,14 @@ let rec linval ({pexp_desc;pexp_loc;pexp_attributes} as outer) =
     
   | Pexp_apply ({pexp_desc=Pexp_ident {txt=Lident"!!"}} , [(Nolabel,exp)]) ->
      let newvar = newname "linval" in
-     constr ~loc:pexp_loc "Lsession.L" [longident ~loc:pexp_loc newvar], [(newvar,exp)]
+     constr ~loc:pexp_loc "L" [longident ~loc:pexp_loc newvar], [(newvar,exp)]
      
   | Pexp_tuple (exprs) ->
     let exprs, bindings = List.split (List.map linval exprs) in
     {pexp_desc=Pexp_tuple(exprs);pexp_loc;pexp_attributes}, List.concat bindings
 
   | Pexp_construct ({txt=Lident "Data"},Some(expr)) ->
-     constr ~loc:pexp_loc ~attrs:pexp_attributes "Lsession.L" [expr], []
+     constr ~loc:pexp_loc ~attrs:pexp_attributes "L" [expr], []
        
   | Pexp_construct (lid,Some(expr)) ->
      let expr, binding = linval expr in
@@ -395,7 +395,7 @@ let expression_mapper id mapper exp attrs =
 
   | "linret", expr ->
      let new_exp,bindings = linval {pexp_desc=expr;pexp_loc;pexp_attributes} in
-     let new_exp = constr ~loc:pexp_loc "Lsession.L" [new_exp] in
+     let new_exp = constr ~loc:pexp_loc "L" [new_exp] in
      let new_exp = app (monad_return_raw ()) [new_exp] in
      let new_exp = add_getslots bindings new_exp in
      Some(new_exp)

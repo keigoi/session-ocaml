@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 2e4362156c51815f622a90a141d7667a)
+# DO NOT EDIT (digest: 1d623cb73d79c863e1d78379570b701c)
 version = "0.1"
 description =
 "A concurrent / distributed programming with protocol typing, based on Session Types."
@@ -20,6 +20,18 @@ package "ppx" (
  archive(syntax, preprocessor, native, plugin) = "ppx.cmxs"
  ppx = "ppx_session"
  exists_if = "ppx.cma"
+)
+
+package "net" (
+ version = "0.1"
+ description =
+ "A concurrent / distributed programming with protocol typing, based on Session Types."
+ requires = "threads str ppx_implicits"
+ archive(byte) = "net.cma"
+ archive(byte, plugin) = "net.cma"
+ archive(native) = "net.cmxa"
+ archive(native, plugin) = "net.cmxs"
+ exists_if = "net.cma"
 )
 # OASIS_STOP
 

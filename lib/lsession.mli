@@ -69,7 +69,6 @@ module type S = sig
 end
             
 module Make(U : UnsafeChannel) : S
-module UnsafeChannel : UnsafeChannel
               
 include S
 

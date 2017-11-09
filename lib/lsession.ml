@@ -91,7 +91,7 @@ module Make(U : UnsafeChannel) : S = struct
     fun (_,set) pre ->
     set pre Empty, L ()
 
-  let send : 'v 'r1 'p 'pre 'post.
+  let send : 'v 'r1 'p 'r2 'pre 'post.
              'v -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2) lsess, empty, 'pre, 'post) slot
              -> ('pre, 'post, ('p, 'r1*'r2) lsess) lmonad =
     fun v (get,set) pre ->
@@ -143,15 +143,13 @@ module Make(U : UnsafeChannel) : S = struct
 
 end
                                
-module UnsafeChannel : UnsafeChannel = struct
+include Make(struct
   type t      = unit Event.channel
   let create     = Event.new_channel
   let send ch x  = Event.sync (Event.send ch (Obj.magic x))
   let receive ch = Obj.magic (Event.sync (Event.receive ch))
   let reverse ch = ch
-end
-
-include Make(UnsafeChannel)
+end)
 
 module Syntax = struct
   let bind = (>>=)

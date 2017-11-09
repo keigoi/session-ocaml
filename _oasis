@@ -32,6 +32,17 @@ Library ppx
   XMETAExtraLines: ppx = "ppx_session"
   BuildDepends: compiler-libs, ppx_tools.metaquot, ppx_deriving.api
 
+Library "net"
+  Path:       net
+  BuildTools: ocamlbuild
+  FindlibName: net
+  FindlibParent: session-ocaml
+  Modules:
+    Dsession
+  ByteOpt: -I +threads
+  NativeOpt: -I +threads
+  BuildDepends: threads, str, ppx_implicits
+
 Executable ppx_session
   Path: ppx
   BuildTools: ocamlbuild

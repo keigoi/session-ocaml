@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 75e8c62c331c2f5d0fe448ec9d2acf15) *)
+(* DO NOT EDIT (digest: 8f0c958ed55f8e58c9f7529d4666c5d5) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -880,7 +880,11 @@ open Ocamlbuild_plugin;;
 let package_default =
   {
      MyOCamlbuildBase.lib_ocaml =
-       [("session-ocaml", ["lib"], []); ("ppx", ["ppx"], [])];
+       [
+          ("session-ocaml", ["lib"], []);
+          ("ppx", ["ppx"], []);
+          ("net", ["net"], [])
+       ];
      lib_c = [];
      flags =
        [
@@ -905,7 +909,19 @@ let package_default =
               "compile";
               "native"
            ],
-            [(OASISExpr.EBool true, S [A "-rectypes"])])
+            [(OASISExpr.EBool true, S [A "-rectypes"])]);
+          (["oasis_library_net_byte"; "ocaml"; "link"; "byte"],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          (["oasis_library_net_native"; "ocaml"; "link"; "native"],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          (["oasis_library_net_byte"; "ocaml"; "ocamldep"; "byte"],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          (["oasis_library_net_native"; "ocaml"; "ocamldep"; "native"],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          (["oasis_library_net_byte"; "ocaml"; "compile"; "byte"],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])]);
+          (["oasis_library_net_native"; "ocaml"; "compile"; "native"],
+            [(OASISExpr.EBool true, S [A "-I"; A "+threads"])])
        ];
      includes = []
   }
@@ -915,6 +931,6 @@ let conf = {MyOCamlbuildFindlib.no_automatic_syntax = false}
 
 let dispatch_default = MyOCamlbuildBase.dispatch_default conf package_default;;
 
-# 919 "myocamlbuild.ml"
+# 935 "myocamlbuild.ml"
 (* OASIS_STOP *)
 Ocamlbuild_plugin.dispatch dispatch_default;;
