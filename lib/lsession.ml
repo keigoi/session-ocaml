@@ -1,9 +1,6 @@
-type 'a lin = L of 'a
 type 'a data = W of 'a
 type ('pre, 'post, 'a) lmonad = 'pre -> 'post * 'a
 type 'f lbind = 'f
-
-let unlin (L v) = v
 
 type ('a,'b,'ss,'tt) slot = ('ss -> 'a) * ('ss -> 'b -> 'tt)
 
@@ -15,7 +12,7 @@ let _3 = (fun (_,(_,(_,(a,_)))) -> a), (fun (s0,(s1,(s2,(_,ss)))) b -> (s0,(s1,(
 type empty = Empty
 type all_empty = empty * 'a as 'a
 
-let return a pre = pre, L a
+let return a pre = pre, a
 let (>>=) f g pre = let mid, la = f pre in g la mid
 let (>>) f g pre = let mid, _ = f pre in g mid
 
@@ -35,111 +32,109 @@ module type S = sig
   val new_channel : unit -> 'p channel
 
   type ('p,'q) sess
-  type ('p, 'q) lsess = ('p, 'q) sess lin
 
-  val accept : 'p channel -> ('pre, 'pre, ('p, serv) lsess) lmonad
+  val accept : 'p channel -> ('pre, 'pre, ('p, serv) sess) lmonad
 
-  val connect : 'p channel -> ('pre, 'pre, ('p, cli) lsess) lmonad
+  val connect : 'p channel -> ('pre, 'pre, ('p, cli) sess) lmonad
 
-  val close : (([`close], 'r1*'r2) lsess, empty, 'pre, 'post) slot
-              -> ('pre, 'post, unit lin) lmonad
+  val close : (([`close], 'r1*'r2) sess, empty, 'pre, 'post) slot
+              -> ('pre, 'post, unit) lmonad
 
-  val send : 'v -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2) lsess, empty, 'pre, 'post) slot
-             -> ('pre, 'post, ('p, 'r1*'r2) lsess) lmonad
+  val send : 'v -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot
+             -> ('pre, 'post, ('p, 'r1*'r2) sess) lmonad
 
-  val receive : (([`msg of 'r2 * 'v * 'p], 'r1*'r2) lsess, empty, 'pre, 'post) slot
-                -> ('pre, 'post, ('v data * ('p, 'r1*'r2) lsess) lin) lmonad
+  val receive : (([`msg of 'r2 * 'v * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot
+                -> ('pre, 'post, 'v data * ('p, 'r1*'r2) sess) lmonad
 
-  val select : (('p,'r2*'r1) lsess -> ([>] as 'br))
-               -> (([`branch of 'r1 * 'br],'r1*'r2) lsess, empty, 'pre, 'post) slot
-               -> ('pre, 'post, ('p,'r1*'r2) lsess) lmonad
+  val select : (('p,'r2*'r1) sess -> ([>] as 'br))
+               -> (([`branch of 'r1 * 'br],'r1*'r2) sess, empty, 'pre, 'post) slot
+               -> ('pre, 'post, ('p,'r1*'r2) sess) lmonad
 
-  val branch : (([`branch of 'r2 * [>] as 'br], 'r1*'r2) lsess, empty, 'pre, 'post) slot
-               -> ('pre, 'post, 'br lin) lmonad
+  val branch : (([`branch of 'r2 * [>] as 'br], 'r1*'r2) sess, empty, 'pre, 'post) slot
+               -> ('pre, 'post, 'br) lmonad
 
-  val deleg_send : (('pp, 'qq) lsess, empty, 'mid, 'post) slot
-                   -> (([`deleg of 'r1 * ('pp, 'qq) lsess * 'p], 'r1*'r2) lsess, empty, 'pre, 'mid) slot
-                   -> ('pre, 'post, ('p, 'r1*'r2) lsess) lmonad
+  val deleg_send : (('pp, 'qq) sess, empty, 'mid, 'post) slot
+                   -> (([`deleg of 'r1 * ('pp, 'qq) sess * 'p], 'r1*'r2) sess, empty, 'pre, 'mid) slot
+                   -> ('pre, 'post, ('p, 'r1*'r2) sess) lmonad
 
   val deleg_recv :
-    (([`deleg of 'r2 * ('pp, 'qq) lsess * 'p], 'r1*'r2) lsess, empty, 'pre, 'post) slot
-    -> ('pre, 'post, (('pp,'qq) lsess * ('p,'r1*'r2) lsess) lin) lmonad
+    (([`deleg of 'r2 * ('pp, 'qq) sess * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot
+    -> ('pre, 'post, ('pp,'qq) sess * ('p,'r1*'r2) sess) lmonad
 
 end
 
 module Make(U : UnsafeChannel) : S = struct
   type ('p,'q) sess = U.t
   type 'p channel = U.t Schannel.t
-  type ('p, 'q) lsess = ('p, 'q) sess lin
 
   let new_channel = Schannel.create
 
-  let accept : 'p 'pre. 'p channel -> ('pre, 'pre, ('p, serv) lsess) lmonad =
+  let accept : 'p 'pre. 'p channel -> ('pre, 'pre, ('p, serv) sess) lmonad =
     fun ch pre ->
     let s = Schannel.receive ch in
-    pre, L s
+    pre, s
 
-  let connect : 'p 'pre. 'p channel -> ('pre, 'pre, ('p, cli) lsess) lmonad =
+  let connect : 'p 'pre. 'p channel -> ('pre, 'pre, ('p, cli) sess) lmonad =
     fun ch pre ->
     let s = U.create () in
     Schannel.send ch (U.reverse s);
-    pre, L s
+    pre, s
     
   let close : 'pre 'r1 'r2 'post.
-              (([`close], 'r1*'r2) lsess, empty, 'pre, 'post) slot
-              -> ('pre, 'post, unit lin) lmonad =
+              (([`close], 'r1*'r2) sess, empty, 'pre, 'post) slot
+              -> ('pre, 'post, unit) lmonad =
     fun (_,set) pre ->
-    set pre Empty, L ()
+    set pre Empty, ()
 
   let send : 'v 'r1 'p 'r2 'pre 'post.
-             'v -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2) lsess, empty, 'pre, 'post) slot
-             -> ('pre, 'post, ('p, 'r1*'r2) lsess) lmonad =
+             'v -> (([`msg of 'r1 * 'v * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot
+             -> ('pre, 'post, ('p, 'r1*'r2) sess) lmonad =
     fun v (get,set) pre ->
-    let s = unlin @@ get pre in
+    let s = get pre in
     U.send s v;
-    set pre Empty, L s
+    set pre Empty, s
 
   let receive : 'r2 'v 'p 'r1 'pre 'post.
-                (([`msg of 'r2 * 'v * 'p], 'r1*'r2) lsess, empty, 'pre, 'post) slot
-                -> ('pre, 'post, ('v data * ('p, 'r1*'r2) lsess) lin) lmonad =
+                (([`msg of 'r2 * 'v * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot
+                -> ('pre, 'post, 'v data * ('p, 'r1*'r2) sess) lmonad =
     fun (get,set) pre ->
-    let s = unlin @@ get pre in
-    set pre Empty, L (W (U.receive s), L s)
+    let s = get pre in
+    set pre Empty, (W (U.receive s), s)
 
   let select : 'p 'r2 'r1 'pre 'post.
-               (('p,'r2*'r1) lsess -> ([>] as 'br))
-               -> (([`branch of 'r1 * 'br],'r1*'r2) lsess, empty, 'pre, 'post) slot
-               -> ('pre, 'post, ('p,'r1*'r2) lsess) lmonad =
+               (('p,'r2*'r1) sess -> ([>] as 'br))
+               -> (([`branch of 'r1 * 'br],'r1*'r2) sess, empty, 'pre, 'post) slot
+               -> ('pre, 'post, ('p,'r1*'r2) sess) lmonad =
     fun f (get,set) pre ->
-    let s = unlin @@ get pre in
-    U.send s (f (L (U.reverse s)));
-    set pre Empty, L s
+    let s = get pre in
+    U.send s (f (U.reverse s));
+    set pre Empty, s
 
   let branch : 'r2 'r1 'pre 'post.
-               (([`branch of 'r2 * [>] as 'br], 'r1*'r2) lsess, empty, 'pre, 'post) slot
-               -> ('pre, 'post, 'br lin) lmonad =
+               (([`branch of 'r2 * [>] as 'br], 'r1*'r2) sess, empty, 'pre, 'post) slot
+               -> ('pre, 'post, 'br) lmonad =
     fun (get,set) pre ->
-    let s = unlin @@ get pre in
-    set pre Empty, L (U.receive s)
+    let s = get pre in
+    set pre Empty, (U.receive s)
 
   let deleg_send : 'pp 'qq 'mid 'post 'r1 'r2 'pre.
-                   (('pp, 'qq) lsess, empty, 'mid, 'post) slot
-                   -> (([`deleg of 'r1 * ('pp, 'qq) lsess * 'p], 'r1*'r2) lsess, empty, 'pre, 'mid) slot
-                   -> ('pre, 'post, ('p, 'r1*'r2) lsess) lmonad =
+                   (('pp, 'qq) sess, empty, 'mid, 'post) slot
+                   -> (([`deleg of 'r1 * ('pp, 'qq) sess * 'p], 'r1*'r2) sess, empty, 'pre, 'mid) slot
+                   -> ('pre, 'post, ('p, 'r1*'r2) sess) lmonad =
     fun (get1,set1) (get2,set2) pre ->
-    let s = unlin @@ get2 pre in
+    let s = get2 pre in
     let mid = set2 pre Empty in
-    let t = unlin @@ get1 mid in
+    let t = get1 mid in
     U.send s t;
-    set1 mid Empty, L s
+    set1 mid Empty, s
 
   let deleg_recv : 'r2 'p 'r1 'pre 'post 'pp 'qq.
-                   (([`deleg of 'r2 * ('pp, 'qq) lsess * 'p], 'r1*'r2) lsess, empty, 'pre, 'post) slot
-                   -> ('pre, 'post, (('pp,'qq) lsess * ('p,'r1*'r2) lsess) lin) lmonad =
+                   (([`deleg of 'r2 * ('pp, 'qq) sess * 'p], 'r1*'r2) sess, empty, 'pre, 'post) slot
+                   -> ('pre, 'post, ('pp,'qq) sess * ('p,'r1*'r2) sess) lmonad =
     fun (get,set) pre ->
-    let s = unlin @@ get pre in
+    let s = get pre in
     let t = U.receive s in
-    set pre Empty, L (L t, L s)    
+    set pre Empty, (t, s)    
 
 end
                                
@@ -159,13 +154,12 @@ module Syntax = struct
     let __bind_raw = fun m f pre -> match m pre with (mid,x) -> f x mid
 
     let __putval_raw = fun (_,set) v pre ->
-      set pre (L v), ()
+      set pre v, ()
 
     let __takeval_raw (get,set) pre =
-      set pre Empty, match get pre with L a -> a
+      set pre Empty, get pre
 
     let __mkbindfun f = f
-    let __run m pre = (>>=) (m pre) (fun (_,L a) -> a)
     let __dispose_env m pre =
       (>>=) (m pre) (fun (_,a) -> return (Empty, a))
   end

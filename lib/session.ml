@@ -1,25 +1,27 @@
 (* slots and lenses *)
 type empty = Empty
 type all_empty = empty * 'a as 'a
+let rec all_empty = Empty, all_empty
 
-type ('a,'b,'ss,'tt) slot = ('ss -> 'a) * ('ss -> 'b -> 'tt)
+type ('a,'b,'pre,'post) slot = ('pre -> 'a) * ('pre -> 'b -> 'post)
 
+let s = (fun (a,_) -> a), (fun (_,ss) b -> (b,ss))
 let _0 = (fun (a,_) -> a), (fun (_,ss) b -> (b,ss))
 let _1 = (fun (_,(a,_)) -> a), (fun (s0,(_,ss)) b -> (s0,(b,ss)))
 let _2 = (fun (_,(_,(a,_))) -> a), (fun (s0,(s1,(_,ss))) b -> (s0,(s1,(b,ss))))
 let _3 = (fun (_,(_,(_,(a,_)))) -> a), (fun (s0,(s1,(s2,(_,ss)))) b -> (s0,(s1,(s2,(b,ss)))))
+let _4 = (fun (_,(_,(_,(_,(a,_))))) -> a), (fun (s0,(s1,(s2,(s3,(_,ss))))) b -> (s0,(s1,(s2,(s3,(b,ss))))))
 
-let rec all_empty = Empty, all_empty
 let _run_internal a f x = snd (f x a)
-let run f x = _run_internal all_empty f x
-let run_ m = _run_internal all_empty (fun () -> m) ()
+let run f x = snd (f x all_empty)
+let run_ m = snd (m all_empty)
            
-(* monads *)
-type ('ss,'tt,'v) monad = 'ss -> 'tt * 'v
+(* sessions *)
+type ('pre,'post,'a) session = 'pre -> 'post * 'a
 
-let return x p = p, x
-let (>>=) m f p = let q,v = m p in f v q
-let (>>) m n p = let q,_ = m p in n q
+let return x = fun pre -> pre, x
+let (>>=) m f = fun pre -> let mid,a = m pre in f a mid
+let (>>) m n = fun pre -> let mid,_ = m pre in n mid
 
 (* polarized session types *)
 type req = Req
@@ -28,109 +30,106 @@ type resp = Resp
 type cli = req * resp
 type serv = resp * req
 
-type 'p cont =
-  Msg : ('v * 'p cont Channel.t) -> [`msg of 'r * 'v * 'p] cont
-| Branch : 'br  -> [`branch of 'r * 'br] cont
-| Chan : (('pp, 'rr) sess * 'p cont Channel.t) -> [`deleg of 'r * ('pp, 'rr) sess * 'p] cont
-and ('p, 'r) sess = 'p cont Channel.t * 'r
+type 'p wrap =
+  Msg : ('v * 'p wrap Channel.t) -> [`msg of 'r * 'v * 'p] wrap
+| Branch : 'br  -> [`branch of 'r * 'br] wrap
+| Chan : (('pp, 'rr) sess * 'p wrap Channel.t) -> [`deleg of 'r * ('pp, 'rr) sess * 'p] wrap
+and ('p, 'q) sess = 'p wrap Channel.t * 'q
 
 (* service channels *)
-type 'p channel = 'p cont Channel.t Channel.t
+type 'p channel = 'p wrap Channel.t Channel.t
 let new_channel = Channel.create
 
+let accept_ ch f x =
+  let ch' = Channel.receive ch in
+  let ch' = (ch',(Resp,Req)) in
+  _run_internal (ch',all_empty) f x
 
-module SessionN = struct
-  let new_channel = Channel.create
+let connect_ ch f x =
+  let ch' = Channel.create () in
+  Channel.send ch ch';
+  let ch' = (ch',(Req,Resp)) in
+  _run_internal (ch',all_empty) f x
 
-  let close (get,set) ss = set ss Empty, ()
+let close (get,set) = fun pre ->
+  set pre Empty, ()
 
-  let send (get,set) v ss =
-    let ch,q = get ss and ch' = Channel.create () in
-    Channel.send ch (Msg(v,ch')); set ss (ch',q), ()
+let send (get,set) v = fun pre ->
+  let ch,q = get pre
+  and ch' = Channel.create () in
+  Channel.send ch (Msg(v,ch'));
+  set pre (ch',q), ()
 
-  let recv (get,set) ss =
-    let (ch,q) = get ss in let Msg(v,ch') = Channel.receive ch in
-    set ss (ch',q), v
+let recv (get,set) = fun pre ->
+  let (ch,q) = get pre in
+  let Msg(v,ch') = Channel.receive ch in
+  set pre (ch',q), v
 
-  let deleg_send (get0,set0) ~release:(get1,set1) ss =
-    let ch0,q1 = get0 ss and ch0' = Channel.create () in
-    let tt = set0 ss (ch0',q1) in
-    let ch1,q2 = get1 tt in
-    Channel.send ch0 (Chan((ch1,q2),ch0'));
-    set1 tt Empty, ()
+let deleg_send (get0,set0) ~release:(get1,set1) = fun pre ->
+  let ch0,q1 = get0 pre
+  and ch0' = Channel.create () in
+  let mid = set0 pre (ch0',q1) in
+  let ch1,q2 = get1 mid in
+  Channel.send ch0 (Chan((ch1,q2),ch0'));
+  set1 mid Empty, ()
 
-  let deleg_recv (get0,set0) ~bindto:(get1,set1) ss =
-    let ch0,q0 = get0 ss in
-    let Chan((ch1',q1),ch0') = Channel.receive ch0 in
-    let tt = set0 ss (ch0',q0) in
-    set1 tt (ch1',q1), ()
+let deleg_recv (get0,set0) ~bindto:(get1,set1) = fun pre ->
+  let ch0,q0 = get0 pre in
+  let Chan((ch1',q1),ch0') = Channel.receive ch0 in
+  let mid = set0 pre (ch0',q0) in
+  set1 mid (ch1',q1), ()
+  
+let accept ch ~bindto:(_,set) = fun pre ->
+  let ch' = Channel.receive ch in
+  set pre (ch',(Resp,Req)), ()
 
-  let accept ch ~bindto:(_,set) ss =
-    let ch' = Channel.receive ch in set ss (ch',(Resp,Req)), ()
-
-  let connect ch ~bindto:(_,set) ss =
-    let ch' = Channel.create () in Channel.send ch ch'; set ss (ch',(Req,Resp)), ()
-
-
-  let inp : 'p 'r. 'p -> 'r -> ('p,'r) sess = fun x _ -> Obj.magic x
-  let out : 'p 'r. ('p,'r) sess -> 'p = Obj.magic
-
-  let _branch_start : type br.
-                           (([`branch of 'r2 * br], 'r1*'r2) sess, 'x, 'ss, 'xx) slot
-                           -> (br * ('r1*'r2) -> ('ss, 'uu,'v) monad)
-                           -> ('ss, 'uu, 'v) monad
-    = fun (get0,set0) f ss ->
-    let (ch,p) = get0 ss in
-    match Channel.receive ch with
-    | Branch(br) -> f (br,p) ss
-
-  let _branch :
-        (([`branch of 'r2 * 'br], 'r1*'r2) sess, ('p,'r1*'r2) sess, 'ss, 'tt1) slot
-        -> 'p * ('r1*'r2)
-        -> ('tt1,'uu,'v) monad
-        -> ('ss, 'uu, 'v) monad
-    = fun (_,set1) (c,p) m ss ->
-    let tt1 = set1 ss (inp c p)
-    in m tt1
+let connect ch ~bindto:(_,set) = fun pre ->
+  let ch' = Channel.create () in
+  Channel.send ch ch';
+  set pre (ch',(Req,Resp)), ()
 
 
-  let _select : type br p.
-                     (([`branch of 'r1 * br],'r1*'r2) sess, (p,'r1*'r2) sess, 'ss, 'tt) slot
-                     -> (p -> br)
-                     -> ('ss, 'tt, 'v) monad = fun (get0,set0) f ss ->
-    let ch,p = get0 ss in
-    let k = Channel.create () in
-    Channel.send ch (Branch(f (out (k,p))));
-    set0 ss (k,p), ()
+let inp : 'p 'r. 'p -> 'p wrap Channel.t = Obj.magic
+let out : 'p 'r. 'p wrap Channel.t -> 'p = Obj.magic
 
-  let branch2 (s1,f1) (s2,f2) =
-    _branch_start s1 (function
-                      | `left(p1),q -> _branch s1 (p1,q) (f1 ())
-                      | `right(p2),q -> _branch s2 (p2,q) (f2 ())
-                     : [`left of 'p1 | `right of 'p2] * 'x -> 'y)
+let _branch : type br.
+                         (([`branch of 'r2 * br], 'r1*'r2) sess, empty, 'pre, 'mid) slot
+                         -> (br * ('r1*'r2) -> ('mid, 'post,'v) session)
+                         -> ('pre, 'post, 'v) session
+  = fun (get0,set0) f pre ->
+  let (ch,p) = get0 pre in
+  let mid = set0 pre Empty in
+  match Channel.receive ch with
+  | Branch(br) -> f (br,p) mid
 
-  let select_left s = _select s (fun x -> `left(x))
+let _set_sess :
+      (empty, ('p,'r1*'r2) sess, 'pre, 'mid) slot
+      -> 'p * ('r1*'r2)
+      -> ('mid,'post,'v) session
+      -> ('pre, 'post, 'v) session
+  = fun (_,set1) (c,p) m ss ->
+  let tt1 = set1 ss ((inp c), p)
+  in m tt1
 
-  let select_right s = _select s (fun x -> `right(x))
-end
 
-module Session0 = struct
-  let accept_ ch f v = run (fun v -> SessionN.accept ch ~bindto:_0 >> f v) v
-  let connect_ ch f v = run (fun v -> SessionN.connect ch ~bindto:_0 >> f v) v
+let _select : type br p.
+                   (([`branch of 'r1 * br],'r1*'r2) sess, (p,'r1*'r2) sess, 'ss, 'tt) slot
+                   -> (p -> br)
+                   -> ('ss, 'tt, 'v) session = fun (get0,set0) f ss ->
+  let ch,p = get0 ss in
+  let k = Channel.create () in
+  Channel.send ch (Branch(f (out k)));
+  set0 ss (k,p), ()
 
-  let close () = SessionN.close _0
-  let recv () = SessionN.recv _0
-  let send v = SessionN.send _0 v
+let branch ~left:((get1,set1),f1) ~right:((get2,set2),f2) = fun pre ->
+  let (ch,p) = get1 pre in
+  match Channel.receive ch with
+  | Branch(`left(ch')) -> f1 () (set1 pre (inp ch', p))
+  | Branch(`right(ch')) -> f2 () (set2 pre (inp ch', p))
 
-  let branch2 = fun f g -> SessionN.branch2 (_0,f) (_0,g)
-  let select_left () = SessionN.select_left _0
-  let select_right () = SessionN.select_right _0
+let select_left s = _select s (fun x -> `left(x))
 
-  let _select f = SessionN._select _0 f
-  let _branch_start f = SessionN._branch_start _0 f
-  let _branch wit m = SessionN._branch _0 wit m
-
-end
+let select_right s = _select s (fun x -> `right(x))
 
 type 'a parse_result =
   [`Partial of (string option -> 'a parse_result)
@@ -139,7 +138,7 @@ type 'a parse_result =
 
 module type Adapter = sig
   type raw_chan
-  type 'p net = raw_chan -> (('p, serv) sess * all_empty, all_empty, unit) monad
+  type 'p net = raw_chan -> (('p, serv) sess * all_empty, all_empty, unit) session
   val req : ('v -> string) -> 'p net -> [`msg of req * 'v * 'p] net
   val resp : (string -> 'v parse_result) -> 'p net -> [`msg of resp * 'v * 'p] net
   val sel : left:'p1 net -> right:'p2 net ->
@@ -151,14 +150,7 @@ end
 
 module Syntax = struct
   let bind = (>>=)
-  module Session0 = struct
-    let _select = Session0._select
-    let _branch_start = Session0._branch_start
-    let _branch = Session0._branch
-  end
-  module SessionN = struct
-    let _select = SessionN._select
-    let _branch_start = SessionN._branch_start
-    let _branch = SessionN._branch
-  end
+  let _select = _select
+  let _branch = _branch
+  let _set_sess = _set_sess
 end

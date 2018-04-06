@@ -137,7 +137,7 @@ open Tcp
 
 let s = _0
 
-let sendmail host port from to_ mailbody () : ((smtp,cli,stream) dsess * empty_three, empty_four, unit lin) lmonad =
+let sendmail host port from to_ mailbody () : ((smtp,cli,stream) dsess * empty_three, empty_four, unit) lmonad =
   let%lin `_200(msg,#s) = branch s in
   List.iter print_endline msg;
   let%lin #s = select (fun x -> `EHLO("me.example.com",x)) s in

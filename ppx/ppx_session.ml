@@ -123,12 +123,6 @@ let lin_pattern oldpat =
       pconstr ~loc:ppat_loc "W" [pat]
     in
     let newpat = traverse wrap_datapat replace_linpat oldpat in
-    let newpat =
-      if is_linpat oldpat then
-        newpat (* not to duplicate Lin pattern *)
-      else
-        pconstr ~loc:ppat_loc "L" [newpat]
-    in
     newpat, List.rev !lin_vars
   in
   let newpat,lin_vars = wrap oldpat in

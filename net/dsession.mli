@@ -13,15 +13,15 @@ type empty
 type empty_three = empty * (empty * (empty * empty))
 type empty_four = empty * empty_three
 
-val return : 'a -> ('pre, 'pre, 'a lin) lmonad
-val (>>=) : ('pre, 'mid, 'a lin) lmonad
-  -> ('a lin -> ('mid, 'post, 'b lin) lmonad) lbind
-  -> ('pre, 'post, 'b lin) lmonad
-val (>>) : ('pre, 'mid, unit lin) lmonad
-  -> ('mid, 'post, 'b lin) lmonad
-  -> ('pre, 'post, 'b lin) lmonad
+val return : 'a -> ('pre, 'pre, 'a) lmonad
+val (>>=) : ('pre, 'mid, 'a) lmonad
+  -> ('a -> ('mid, 'post, 'b) lmonad) lbind
+  -> ('pre, 'post, 'b) lmonad
+val (>>) : ('pre, 'mid, unit) lmonad
+  -> ('mid, 'post, 'b) lmonad
+  -> ('pre, 'post, 'b) lmonad
 
-val run : (unit -> (empty_four, empty_four, unit lin) lmonad) -> unit
+val run : (unit -> (empty_four, empty_four, unit) lmonad) -> unit
 
 type req and resp
 type cli = req * resp and serv = resp * req
@@ -69,7 +69,7 @@ module type S = sig
   val close :
     ?_closer:'c Closer.t ->
     (([`close], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-    -> ('pre, 'post, unit lin) lmonad
+    -> ('pre, 'post, unit) lmonad
 
   val send :
     ?_sender:('c, 'v) Sender.t
@@ -79,7 +79,7 @@ module type S = sig
   val receive :
     ?_receiver:('c, 'v) Receiver.t
     -> (([`msg of 'r2 * 'v * 'p], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-    -> ('pre, 'post, ('v data * ('p, 'r1*'r2, 'c) dsess) lin) lmonad
+    -> ('pre, 'post, 'v data * ('p, 'r1*'r2, 'c) dsess) lmonad
 
   val select :
     ?_sender:('c, [>] as 'br) Sender.t
@@ -90,7 +90,7 @@ module type S = sig
   val branch :
     ?_receiver:('c, [>] as 'br) Receiver.t
     -> (([`branch of 'r2 * 'br], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-    -> ('pre, 'post, 'br lin) lmonad
+    -> ('pre, 'post, 'br) lmonad
 
   val deleg_send :
     ?_sender:('c , ('pp,'qq,'cc) sess) Sender.t
@@ -101,7 +101,7 @@ module type S = sig
   val deleg_recv :
     ?_receiver:('c, ('pp, 'qq, 'cc) sess) Receiver.t
     -> (([`deleg of 'r2 * ('pp, 'qq, 'cc) dsess * 'p], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-    -> ('pre, 'post, (('pp,'qq,'cc) dsess * ('p,'r1*'r2,'c) dsess) lin) lmonad
+    -> ('pre, 'post, ('pp,'qq,'cc) dsess * ('p,'r1*'r2,'c) dsess) lmonad
 
 end
             
@@ -116,9 +116,9 @@ end
 include S
 
 module Syntax : sig
-  val bind : ('pre, 'mid, 'a lin) lmonad
-             -> ('a lin -> ('mid, 'post, 'b lin) lmonad) lbind
-             -> ('pre, 'post, 'b lin) lmonad
+  val bind : ('pre, 'mid, 'a) lmonad
+             -> ('a -> ('mid, 'post, 'b) lmonad) lbind
+             -> ('pre, 'post, 'b) lmonad
 
   module Internal : sig
     val __bind_raw : ('pre,'mid,'a) lmonad -> ('a -> ('mid,'post,'b) lmonad) -> ('pre,'post,'b) lmonad
@@ -127,7 +127,7 @@ module Syntax : sig
     val __mkbindfun : ('a -> ('pre,'post,'b) lmonad) -> ('a -> ('pre, 'post, 'b) lmonad) lbind
 
     val __putval_raw : (empty,'a lin,'pre,'post) slot -> 'a -> ('pre,'post,unit) lmonad
-    val __takeval_raw : ('a lin,empty,'pre,'post) slot -> ('pre,'post,'a) lmonad
+    val __takeval_raw : ('a,empty,'pre,'post) slot -> ('pre,'post,'a) lmonad
   end
 end
 

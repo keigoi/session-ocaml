@@ -16,11 +16,11 @@ type empty = Empty
 type empty_three = empty * (empty * (empty * empty))
 type empty_four = empty * empty_three
 
-let return a pre = pre, L a
+let return a pre = pre, a
 let (>>=) f g pre = let mid, la = f pre in g la mid
 let (>>) f g pre = let mid, _ = f pre in g mid
 
-let run f = unlin @@ snd @@ f () (Empty, (Empty, (Empty, (Empty, Empty))))
+let run f = snd @@ f () (Empty, (Empty, (Empty, (Empty, Empty))))
 
 type req and resp
 type cli = req * resp and serv = resp * req
@@ -68,7 +68,7 @@ module type S = sig
   val close :
     ?_closer:'c Closer.t ->
     (([`close], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-    -> ('pre, 'post, unit lin) lmonad
+    -> ('pre, 'post, unit) lmonad
 
   val send :
     ?_sender:('c, 'v) Sender.t
@@ -78,7 +78,7 @@ module type S = sig
   val receive :
     ?_receiver:('c, 'v) Receiver.t
     -> (([`msg of 'r2 * 'v * 'p], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-    -> ('pre, 'post, ('v data * ('p, 'r1*'r2, 'c) dsess) lin) lmonad
+    -> ('pre, 'post, 'v data * ('p, 'r1*'r2, 'c) dsess) lmonad
 
   val select :
     ?_sender:('c, [>] as 'br) Sender.t
@@ -89,7 +89,7 @@ module type S = sig
   val branch :
     ?_receiver:('c, [>] as 'br) Receiver.t
     -> (([`branch of 'r2 * 'br], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-    -> ('pre, 'post, 'br lin) lmonad
+    -> ('pre, 'post, 'br) lmonad
 
   val deleg_send :
     ?_sender:('c , ('pp,'qq,'cc) sess) Sender.t
@@ -100,7 +100,7 @@ module type S = sig
   val deleg_recv :
     ?_receiver:('c, ('pp, 'qq, 'cc) sess) Receiver.t
     -> (([`deleg of 'r2 * ('pp, 'qq, 'cc) dsess * 'p], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-    -> ('pre, 'post, (('pp,'qq,'cc) dsess * ('p,'r1*'r2,'c) dsess) lin) lmonad
+    -> ('pre, 'post, ('pp,'qq,'cc) dsess * ('p,'r1*'r2,'c) dsess) lmonad
 
 end
 
@@ -179,10 +179,10 @@ end) : S = struct
   let close : 'pre 'r1 'r2 'c 'post.
               ?_closer:'c Closer.t
               -> (([`close], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-              -> ('pre, 'post, unit lin) lmonad =
+              -> ('pre, 'post, unit) lmonad =
     fun ?_closer (get,set) pre ->
     Closer.unpack (instance _closer) (unlin @@ get pre);
-    set pre Empty, L ()
+    set pre Empty, ()
 
   let send : 'v 'r1 'p 'r2 'c 'pre 'post.
              ?_sender:('c,'v) Sender.t
@@ -196,10 +196,10 @@ end) : S = struct
   let receive : 'r2 'v 'p 'r1 'c 'pre 'post.
                 ?_receiver:('c,'v) Receiver.t
                 -> (([`msg of 'r2 * 'v * 'p], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-                -> ('pre, 'post, ('v data * ('p, 'r1*'r2, 'c) dsess) lin) lmonad =
+                -> ('pre, 'post, 'v data * ('p, 'r1*'r2, 'c) dsess) lmonad =
     fun ?_receiver (get,set) pre ->
     let s = unlin @@ get pre in
-    set pre Empty, L (W (Receiver.unpack (instance _receiver) s), L s)
+    set pre Empty, (W (Receiver.unpack (instance _receiver) s), L s)
 
   let select : 'p 'r2 'r1 'c 'pre 'post.
                ?_sender:('c, [>] as 'br) Sender.t
@@ -214,10 +214,10 @@ end) : S = struct
   let branch : 'r2 'r1 'c 'pre 'post.
                ?_receiver:('c,[>] as 'br) Receiver.t
                -> (([`branch of 'r2 * 'br], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-               -> ('pre, 'post, 'br lin) lmonad =
+               -> ('pre, 'post, 'br) lmonad =
     fun ?_receiver (get,set) pre ->
     let s = unlin @@ get pre in
-    set pre Empty, L (Receiver.unpack (instance _receiver) s)
+    set pre Empty, (Receiver.unpack (instance _receiver) s)
 
   let deleg_send : 'pp 'qq 'cc 'mid 'post 'r1 'r2 'c 'pre.
                    ?_sender:('c, ('pp, 'qq, 'cc) sess) Sender.t
@@ -234,11 +234,11 @@ end) : S = struct
   let deleg_recv : 'r2 'p 'r1 'c 'pre 'post 'pp 'qq 'cc.
                    ?_receiver:('c, ('pp, 'qq, 'cc) sess) Receiver.t
                    -> (([`deleg of 'r2 * ('pp, 'qq, 'cc) dsess * 'p], 'r1*'r2, 'c) dsess, empty, 'pre, 'post) slot
-                   -> ('pre, 'post, (('pp,'qq,'cc) dsess * ('p,'r1*'r2,'c) dsess) lin) lmonad =
+                   -> ('pre, 'post, ('pp,'qq,'cc) dsess * ('p,'r1*'r2,'c) dsess) lmonad =
     fun ?_receiver (get,set) pre ->
     let s = unlin @@ get pre in
     let t = Receiver.unpack (instance _receiver) s in
-    set pre Empty, L (L t, L s)    
+    set pre Empty, (L t, L s)    
 
 end
                                
@@ -261,7 +261,7 @@ module Syntax = struct
       set pre (L v), ()
 
     let __takeval_raw (get,set) pre =
-      set pre Empty, match get pre with L a -> a
+      set pre Empty, get pre
 
     let __mkbindfun f = f
     let __run m pre = (>>=) (m pre) (fun (_,L a) -> a)

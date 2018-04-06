@@ -6,12 +6,12 @@ Session-ocaml is an implementation of session types in OCaml.
 
 ## How to try it
 
-Prepare OCaml 4.02.1 or later and install ```findlib```, ```ocamlbuild```, ```ppx_tools```.
-We recommend to use ```opam``` and OCaml 4.03.0.
+Prepare OCaml __4.05__ and install ```findlib```, ```ocamlbuild```, ```ppx_tools```.
+We recommend to use ```opam```
 
-Install the compiler and prerequisite libraries.
+Install the compiler and prerequisite libraries. (__NOTE__: the version number has changed:  4.03 ==> __4.05__)
 
-    opam switch 4.03.0
+    opam switch 4.05.0
     eval `opam config env`
     opam install ocamlfind ocamlbuild ppx_tools
 
@@ -46,12 +46,11 @@ Also, you can uninstall manually by ```ocamlfind remove session-ocaml```.
 
 # Macro for branching / selection
 
-For branching on arbitrary labels, we provide a macro ```match%branch0``` and ```match%branch```.
-
-Single-channel case (```open Session0```):
+For branching on arbitrary labels, we provide a macro ```match%branch```.
 
 ```ocaml
-  match%branch0 () with
+  open Session
+  match%branch s with
   | `apple  -> send 100
   | `banana -> recv ()
   | `orange -> send "Hello!"
@@ -66,39 +65,11 @@ Its protocol type will be:
     | `orange of [`msg of req * string * 'a]]
 ```
 
-Multi-channel case (```open SessionN```):
-
-```ocaml
-  match%branch _2 with
-  | `batman  -> [%select _2 `goodbye]
-  | `ironman -> let%s x = recv _2 in send _2 x
-  | `hulk    -> send _2 "foobar"
-```
-
-Protocol type:
-
-```
-  [ `branch of resp *
-    [ `batman  of [ `branch of req * _[> `goodbye of '_e ] ]
-    | `hulk    of [ `msg of req * string * '_e ]
-    | `ironman of [ `msg of resp * '_f * [ `msg of req * '_f * '_e ] ] ] ]
-```
-
   Similarly, we have a macro for selection, like
 
 ```ocaml
-  [%select0 `label]
+  [%select s `label]
 ```
-
-or
-
-```
-  [%select _n `bark]
-```
-
-## TODO
-
-* Better error reporting inside %branch0 and %branch
 
 ----
 author: Keigo IMAI (@keigoi on Twitter / keigoi __AT__ gifu-u.ac.jp)

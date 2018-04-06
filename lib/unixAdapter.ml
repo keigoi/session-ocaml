@@ -3,7 +3,7 @@ open Session
 let bufsize = 4096
 
 type raw_chan = {in_ch:in_channel; in_buf:string; out_ch:out_channel}
-type 'p net = raw_chan -> (('p, serv) sess * all_empty, all_empty, unit) monad
+type 'p net = raw_chan -> (('p, serv) sess * all_empty, all_empty, unit) session
 
 let consume (read:string->'v parse_result) {in_ch;in_buf} =
   let consume_buf : string -> 'v parse_result = function
@@ -25,7 +25,7 @@ let consume (read:string->'v parse_result) {in_ch;in_buf} =
 
 let req : 'v 'p . ('v -> string) -> 'p net -> [`msg of req * 'v * 'p] net
   = fun print cont ({out_ch} as ch) ->
-  Session0.recv () >>= fun v ->
+  recv _0 >>= fun v ->
   (output_string out_ch (print v); flush out_ch; cont ch)
 
 let resp
@@ -35,29 +35,29 @@ let resp
   match v with
   | None -> assert false (*FIXME:EOF*)
   | Some(v) ->
-     Session0.send v >>
+     send _0 v >>
      cont ch
 
 let sel : 'p1 'p2. left:'p1 net -> right:'p2 net ->
           [`branch of req * [`left of 'p1|`right of 'p2]] net
   = fun ~left ~right ch ->
-  Session0.branch2 (fun () -> left ch)
-                   (fun () -> right ch)
+  branch (_0, fun () -> left ch)
+         (_0, fun () -> right ch)
 
 let bra
   = fun ~left:(read,left) ~right ({in_ch;in_buf} as ch) ->
   let v, in_buf = consume read ch in
   let ch = {ch with in_buf} in
   match v with
-  | Some v -> Session0.select_left () >> Session0.send v >> left ch
-  | None -> Session0.select_right () >> right ch
+  | Some v -> select_left _0 >> send _0 v >> left ch
+  | None -> select_right _0 >> right ch
 
 let cls : [`close] net
   = fun {in_ch;out_ch;in_buf} ->
   close_in_noerr in_ch;
   close_out_noerr out_ch;
   (* assert in_buf="" *)
-  Session0.close ()
+  close _0
 
 module TcpSession = struct
   let new_channel adapter hostport =
@@ -75,6 +75,6 @@ module TcpSession = struct
     in
     let in_ch,out_ch = connect () in
     let ch = Session.new_channel () in
-    ignore @@ Thread.create (Session0.accept_ ch adapter) {in_ch;out_ch;in_buf=""};
+    ignore @@ Thread.create (fun () -> run_ (accept ch ~bindto:_0 >> adapter {in_ch;out_ch;in_buf=""})) ();
     ch
 end
