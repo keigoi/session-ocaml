@@ -1,4 +1,4 @@
-open Session
+open Session_ocaml.Session
 let xor : bool -> bool -> bool = (<>)
 let print_bool = Printf.printf "%B"
 type binop = And | Or | Xor | Imp

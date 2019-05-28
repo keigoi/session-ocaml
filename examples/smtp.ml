@@ -1,3 +1,4 @@
+open Session_ocaml
 (* EHLO example.com *)                (* MAIL FROM: alice@example.com *)
 type ehlo = EHLO of string            type mail = MAIL of string
 (* RCPT TO: bob@example.com *)        (* DATA *)
@@ -70,7 +71,7 @@ and bd_p ch = (req data @@ resp r354 @@ req string_list @@ resp r200 @@ ml_p) ch
 
 let escape : string -> string list = Str.split (Str.regexp "\n") (*FIXME*)
 
-open Session0
+open Session
 let smtp_client hostport from to_ mailbody =
   let ch : smtp channel = TcpSession.new_channel smtp_adapter hostport in
   connect_ ch begin fun () ->

@@ -1,4 +1,4 @@
-open Session
+open Session_ocaml.Session
 open Example_journal2
 let worker_ch = new_channel ()
 let rec main () =
@@ -14,7 +14,7 @@ let rec worker () =
   logic_server () >>= fun () ->
   worker ();;
 for i = 0 to 5 do
-  Thread.create (run worker) ()
+  ignore (Thread.create (run worker) ())
 done;;
 Thread.create (run main) ();;
 connect_ log_ch (fun () ->

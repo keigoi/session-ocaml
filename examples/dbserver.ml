@@ -1,14 +1,13 @@
-open Session
+open Session_ocaml.Session
 
 type result = Result (*stub*)
 type credential = Cred (*stub*)
 let bad_credential Cred = false (*stub*)
 let do_query (query:string) : result = Result (*stub*)
    
-let db_ch = new_channel ()
-and worker_ch = new_channel ()  
+let worker_ch = new_channel ()
   
-let rec main () =
+let rec main db_ch =
   accept db_ch ~bindto:_0 >>
   recv _0 >>= fun cred ->
   if bad_credential cred then
@@ -18,8 +17,8 @@ let rec main () =
     select_right _0 >>
     connect worker_ch ~bindto:_1 >>
     deleg_send _1 ~release:_0 >>
-    close _1 >>=
-    main
+    close _1 >>= fun () ->
+    main db_ch
 
 let rec worker () =
   accept worker_ch ~bindto:_0 >>

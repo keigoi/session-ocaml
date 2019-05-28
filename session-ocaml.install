@@ -1,0 +1,57 @@
+lib: [
+  "_build/install/default/lib/session-ocaml/META" {"META"}
+  "_build/install/default/lib/session-ocaml/Session_ocaml.a" {"Session_ocaml.a"}
+  "_build/install/default/lib/session-ocaml/Session_ocaml.cma" {"Session_ocaml.cma"}
+  "_build/install/default/lib/session-ocaml/Session_ocaml.cmxa" {"Session_ocaml.cmxa"}
+  "_build/install/default/lib/session-ocaml/Session_ocaml.cmxs" {"Session_ocaml.cmxs"}
+  "_build/install/default/lib/session-ocaml/channel.ml" {"channel.ml"}
+  "_build/install/default/lib/session-ocaml/channel.mli" {"channel.mli"}
+  "_build/install/default/lib/session-ocaml/dune-package" {"dune-package"}
+  "_build/install/default/lib/session-ocaml/lsession.ml" {"lsession.ml"}
+  "_build/install/default/lib/session-ocaml/lsession.mli" {"lsession.mli"}
+  "_build/install/default/lib/session-ocaml/monitor.ml" {"monitor.ml"}
+  "_build/install/default/lib/session-ocaml/monitor.mli" {"monitor.mli"}
+  "_build/install/default/lib/session-ocaml/opam" {"opam"}
+  "_build/install/default/lib/session-ocaml/schannel.ml" {"schannel.ml"}
+  "_build/install/default/lib/session-ocaml/schannel.mli" {"schannel.mli"}
+  "_build/install/default/lib/session-ocaml/session.ml" {"session.ml"}
+  "_build/install/default/lib/session-ocaml/session.mli" {"session.mli"}
+  "_build/install/default/lib/session-ocaml/session_ocaml.cmi" {"session_ocaml.cmi"}
+  "_build/install/default/lib/session-ocaml/session_ocaml.cmt" {"session_ocaml.cmt"}
+  "_build/install/default/lib/session-ocaml/session_ocaml.cmx" {"session_ocaml.cmx"}
+  "_build/install/default/lib/session-ocaml/session_ocaml.ml" {"session_ocaml.ml"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Channel.cmi" {"session_ocaml__Channel.cmi"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Channel.cmt" {"session_ocaml__Channel.cmt"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Channel.cmti" {"session_ocaml__Channel.cmti"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Channel.cmx" {"session_ocaml__Channel.cmx"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Lsession.cmi" {"session_ocaml__Lsession.cmi"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Lsession.cmt" {"session_ocaml__Lsession.cmt"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Lsession.cmti" {"session_ocaml__Lsession.cmti"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Lsession.cmx" {"session_ocaml__Lsession.cmx"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Monitor.cmi" {"session_ocaml__Monitor.cmi"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Monitor.cmt" {"session_ocaml__Monitor.cmt"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Monitor.cmti" {"session_ocaml__Monitor.cmti"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Monitor.cmx" {"session_ocaml__Monitor.cmx"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Schannel.cmi" {"session_ocaml__Schannel.cmi"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Schannel.cmt" {"session_ocaml__Schannel.cmt"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Schannel.cmti" {"session_ocaml__Schannel.cmti"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Schannel.cmx" {"session_ocaml__Schannel.cmx"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Session.cmi" {"session_ocaml__Session.cmi"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Session.cmt" {"session_ocaml__Session.cmt"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Session.cmti" {"session_ocaml__Session.cmti"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__Session.cmx" {"session_ocaml__Session.cmx"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__UnixAdapter.cmi" {"session_ocaml__UnixAdapter.cmi"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__UnixAdapter.cmt" {"session_ocaml__UnixAdapter.cmt"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__UnixAdapter.cmti" {"session_ocaml__UnixAdapter.cmti"}
+  "_build/install/default/lib/session-ocaml/session_ocaml__UnixAdapter.cmx" {"session_ocaml__UnixAdapter.cmx"}
+  "_build/install/default/lib/session-ocaml/unixAdapter.ml" {"unixAdapter.ml"}
+  "_build/install/default/lib/session-ocaml/unixAdapter.mli" {"unixAdapter.mli"}
+]
+bin: [
+  "_build/install/default/bin/dbserver" {"dbserver"}
+  "_build/install/default/bin/example_journal1" {"example_journal1"}
+  "_build/install/default/bin/example_journal3" {"example_journal3"}
+]
+doc: [
+  "_build/install/default/doc/session-ocaml/README.md"
+]

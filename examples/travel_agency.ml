@@ -1,5 +1,4 @@
-open Session
-open SessionN
+open Session_ocaml.Session
 
 type address = Address of string
 type date = Date of int                        

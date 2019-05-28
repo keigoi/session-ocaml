@@ -1,0 +1,5 @@
+(library
+ (public_name session-ocaml.net)
+ (name Dsession)
+ (flags ("-g" "-short-paths" "-rectypes"))
+ (libraries threads))

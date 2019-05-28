@@ -1,0 +1,13 @@
+opam-version: "2.0"
+maintainer: "keigo.imai@gmail.com"
+authors: ["Keigo Imai"]
+homepage: "https://github.com/keigoi/session-ocaml"
+bug-reports: "https://github.com/keigoi/session-ocaml/issues"
+dev-repo: "https://github.com/keigoi/session-ocaml.git"
+license: "LGPL-2.1 with OCaml linking exception"
+build:
+[[ "jbuilder" "build" "--only-packages" "%{name}%" "--root" "." "-j" jobs "@install" ]]
+available: [ ocaml-version >= "4.05" ]
+depends: [
+  "jbuilder" {build}
+]

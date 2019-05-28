@@ -1,6 +1,6 @@
 (* ocamlfind ocamlc -o smtp -linkpkg -short-paths -thread -package linocaml.ppx,linocaml.ppx_lens,session_ocaml smtp.ml *)
-open Dsession
-open Dsession.Tcp
+open Session_ocaml.Dsession
+open Session_ocaml.Dsession.Tcp
 
 let bufsize = 4096
 

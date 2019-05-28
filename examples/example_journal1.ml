@@ -1,4 +1,4 @@
-open Session
+open Session_ocaml.Session
 let xor : bool -> bool -> bool = (<>)
 let print_bool = Printf.printf "%B"
 let xor_ch = new_channel ();;

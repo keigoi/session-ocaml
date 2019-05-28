@@ -1,7 +1,0 @@
-PKG session-ocaml session-ocaml.ppx session-ocaml.ppx_lens
-FLG -rectypes
-B +threads
-S .
-S ../lib
-
-B .

@@ -1,0 +1,47 @@
+(executable
+ (name example_journal1)
+ (public_name example_journal1)
+ (modules Example_journal1)
+ (flags ("-g" "-short-paths" "-rectypes"))
+ (libraries session-ocaml))
+
+(library
+ (name example_journal2)
+ (modules Example_journal2)
+ (flags ("-g" "-short-paths" "-rectypes"))
+ (libraries session-ocaml))
+
+(executable
+ (name example_journal3)
+ (public_name example_journal3)
+ (modules Example_journal3)
+ (flags ("-g" "-short-paths" "-rectypes"))
+ (libraries session-ocaml example_journal2))
+
+(executable
+ (name dbserver)
+ (public_name dbserver)
+ (modules Dbserver)
+ (flags ("-g" "-short-paths" "-rectypes"))
+ (libraries session-ocaml))
+
+;; (executable
+;;  (name smtp)
+;;  (public_name smtp)
+;;  (modules Smtp)
+;;  (flags ("-g" "-short-paths" "-rectypes"))
+;;  (libraries session-ocaml))
+
+;; (executable
+;;  (name smtp2)
+;;  (public_name smtp2)
+;;  (modules Smtp2)
+;;  (flags ("-g" "-short-paths" "-rectypes"))
+;;  (libraries session-ocaml))
+
+(executable
+ (name travel_agency)
+ (public_name travel_agency)
+ (modules Travel_agency)
+ (flags ("-g" "-short-paths" "-rectypes"))
+ (libraries session-ocaml))
