@@ -39,9 +39,9 @@
 ;;  (flags ("-g" "-short-paths" "-rectypes"))
 ;;  (libraries session-ocaml))
 
-(executable
- (name travel_agency)
- (public_name travel_agency)
- (modules Travel_agency)
- (flags ("-g" "-short-paths" "-rectypes"))
- (libraries session-ocaml))
+;; (executable
+;;  (name travel_agency)
+;;  (public_name travel_agency)
+;;  (modules Travel_agency)
+;;  (flags ("-g" "-short-paths" "-rectypes"))
+;;  (libraries session-ocaml))

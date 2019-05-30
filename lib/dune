@@ -2,4 +2,4 @@
  (public_name session-ocaml)
  (name Session_ocaml)
  (flags ("-g" "-short-paths" "-rectypes"))
- (libraries threads))
+ (libraries threads unix str))

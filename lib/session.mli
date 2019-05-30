@@ -3,7 +3,7 @@ type empty
 type all_empty = empty * 'a as 'a
 
 (* lenses on slots *)
-type ('a,'b,'pre,'post) slot = ('pre -> 'a) * ('pre -> 'b -> 'post)
+type ('a,'b,'pre,'post) slot = {get:('pre -> 'a); put:('pre -> 'b -> 'post)}
 
 val s : ('a, 'b, ('a * 'pre), ('b * 'pre)) slot
 val _0 : ('a, 'b, ('a * 'pre), ('b * 'pre)) slot
@@ -115,7 +115,7 @@ module Syntax : sig
       :  (([`branch of 'r2 * 'br], 'r1*'r2) sess, empty, 'pre, 'mid) slot
          -> ('br * ('r1*'r2) -> ('mid, 'post,'v) session)
          -> ('pre, 'post, 'v) session
-  
+
   val _set_sess
       :  (empty, ('p,'r1*'r2) sess, 'pre, 'mid) slot
          -> 'p * ('r1*'r2)

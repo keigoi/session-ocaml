@@ -3,19 +3,19 @@ type empty = Empty
 type all_empty = empty * 'a as 'a
 let rec all_empty = Empty, all_empty
 
-type ('a,'b,'pre,'post) slot = ('pre -> 'a) * ('pre -> 'b -> 'post)
+type ('a,'b,'pre,'post) slot = {get:('pre -> 'a); put:('pre -> 'b -> 'post)}
 
-let s = (fun (a,_) -> a), (fun (_,ss) b -> (b,ss))
-let _0 = (fun (a,_) -> a), (fun (_,ss) b -> (b,ss))
-let _1 = (fun (_,(a,_)) -> a), (fun (s0,(_,ss)) b -> (s0,(b,ss)))
-let _2 = (fun (_,(_,(a,_))) -> a), (fun (s0,(s1,(_,ss))) b -> (s0,(s1,(b,ss))))
-let _3 = (fun (_,(_,(_,(a,_)))) -> a), (fun (s0,(s1,(s2,(_,ss)))) b -> (s0,(s1,(s2,(b,ss)))))
-let _4 = (fun (_,(_,(_,(_,(a,_))))) -> a), (fun (s0,(s1,(s2,(s3,(_,ss))))) b -> (s0,(s1,(s2,(s3,(b,ss))))))
+let s = {get=(fun (a,_) -> a); put=(fun (_,ss) b -> (b,ss))}
+let _0 = {get=(fun (a,_) -> a); put=(fun (_,ss) b -> (b,ss))}
+let _1 = {get=(fun (_,(a,_)) -> a); put=(fun (s0,(_,ss)) b -> (s0,(b,ss)))}
+let _2 = {get=(fun (_,(_,(a,_))) -> a); put=(fun (s0,(s1,(_,ss))) b -> (s0,(s1,(b,ss))))}
+let _3 = {get=(fun (_,(_,(_,(a,_)))) -> a); put=(fun (s0,(s1,(s2,(_,ss)))) b -> (s0,(s1,(s2,(b,ss)))))}
+let _4 = {get=(fun (_,(_,(_,(_,(a,_))))) -> a); put=(fun (s0,(s1,(s2,(s3,(_,ss))))) b -> (s0,(s1,(s2,(s3,(b,ss))))))}
 
 let _run_internal a f x = snd (f x a)
 let run f x = snd (f x all_empty)
 let run_ m = snd (m all_empty)
-           
+
 (* sessions *)
 type ('pre,'post,'a) session = 'pre -> 'post * 'a
 
@@ -51,52 +51,52 @@ let connect_ ch f x =
   let ch' = (ch',(Req,Resp)) in
   _run_internal (ch',all_empty) f x
 
-let close (get,set) = fun pre ->
-  set pre Empty, ()
+let close {get;put} = fun pre ->
+  put pre Empty, ()
 
-let send (get,set) v = fun pre ->
+let send {get;put} v = fun pre ->
   let ch,q = get pre
   and ch' = Channel.create () in
   Channel.send ch (Msg(v,ch'));
-  set pre (ch',q), ()
+  put pre (ch',q), ()
 
-let recv (get,set) = fun pre ->
+let recv {get;put} = fun pre ->
   let (ch,q) = get pre in
   let Msg(v,ch') = Channel.receive ch in
-  set pre (ch',q), v
+  put pre (ch',q), v
 
-let deleg_send (get0,set0) ~release:(get1,set1) = fun pre ->
+let deleg_send {get=get0;put=put0} ~release:{get=get1;put=put1} = fun pre ->
   let ch0,q1 = get0 pre
   and ch0' = Channel.create () in
-  let mid = set0 pre (ch0',q1) in
+  let mid = put0 pre (ch0',q1) in
   let ch1,q2 = get1 mid in
   Channel.send ch0 (Chan((ch1,q2),ch0'));
-  set1 mid Empty, ()
+  put1 mid Empty, ()
 
-let deleg_recv (get0,set0) ~bindto:(get1,set1) = fun pre ->
+let deleg_recv {get=get0;put=put0} ~bindto:{get=get1;put=put1} = fun pre ->
   let ch0,q0 = get0 pre in
   let Chan((ch1',q1),ch0') = Channel.receive ch0 in
-  let mid = set0 pre (ch0',q0) in
-  set1 mid (ch1',q1), ()
-  
-let accept ch ~bindto:(_,set) = fun pre ->
+  let mid = put0 pre (ch0',q0) in
+  put1 mid (ch1',q1), ()
+
+let accept ch ~bindto:{put=set;_} = fun pre ->
   let ch' = Channel.receive ch in
   set pre (ch',(Resp,Req)), ()
 
-let connect ch ~bindto:(_,set) = fun pre ->
+let connect ch ~bindto:{put=set;_} = fun pre ->
   let ch' = Channel.create () in
   Channel.send ch ch';
   set pre (ch',(Req,Resp)), ()
 
 
-let inp : 'p 'r. 'p -> 'p wrap Channel.t = Obj.magic
-let out : 'p 'r. 'p wrap Channel.t -> 'p = Obj.magic
+let inp : 'p. 'p -> 'p wrap Channel.t = Obj.magic
+let out : 'p. 'p wrap Channel.t -> 'p = Obj.magic
 
 let _branch : type br.
                          (([`branch of 'r2 * br], 'r1*'r2) sess, empty, 'pre, 'mid) slot
                          -> (br * ('r1*'r2) -> ('mid, 'post,'v) session)
                          -> ('pre, 'post, 'v) session
-  = fun (get0,set0) f pre ->
+  = fun {get=get0;put=set0} f pre ->
   let (ch,p) = get0 pre in
   let mid = set0 pre Empty in
   match Channel.receive ch with
@@ -107,7 +107,7 @@ let _set_sess :
       -> 'p * ('r1*'r2)
       -> ('mid,'post,'v) session
       -> ('pre, 'post, 'v) session
-  = fun (_,set1) (c,p) m ss ->
+  = fun {put=set1;_} (c,p) m ss ->
   let tt1 = set1 ss ((inp c), p)
   in m tt1
 
@@ -115,17 +115,17 @@ let _set_sess :
 let _select : type br p.
                    (([`branch of 'r1 * br],'r1*'r2) sess, (p,'r1*'r2) sess, 'ss, 'tt) slot
                    -> (p -> br)
-                   -> ('ss, 'tt, 'v) session = fun (get0,set0) f ss ->
+                   -> ('ss, 'tt, 'v) session = fun {get=get0;put=set0} f ss ->
   let ch,p = get0 ss in
   let k = Channel.create () in
   Channel.send ch (Branch(f (out k)));
   set0 ss (k,p), ()
 
-let branch ~left:((get1,set1),f1) ~right:((get2,set2),f2) = fun pre ->
+let branch ~left:({get=get1;put=put1},f1) ~right:({get=get2;put=put2},f2) = fun pre ->
   let (ch,p) = get1 pre in
   match Channel.receive ch with
-  | Branch(`left(ch')) -> f1 () (set1 pre (inp ch', p))
-  | Branch(`right(ch')) -> f2 () (set2 pre (inp ch', p))
+  | Branch(`left(ch')) -> f1 () (put1 pre (inp ch', p))
+  | Branch(`right(ch')) -> f2 () (put2 pre (inp ch', p))
 
 let select_left s = _select s (fun x -> `left(x))
 

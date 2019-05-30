@@ -10,8 +10,4 @@ let () =
 #require "str";;
 #rectypes;;
 
-(* Load each lib provided by this project. *)
-#directory "_build/lib";;
-#load "session-ocaml.cma";;
-
-open Session;;
+open Session_ocaml.Session;;

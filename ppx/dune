@@ -1,7 +1,7 @@
-(library
- (name ppx_session)
- (public_name session-ocaml.ppx)
- (kind ppx_rewriter)
- (ppx_runtime_libraries linocaml)
- (preprocess (pps ppx_tools_versioned.metaquot_405))
- (libraries ocaml-migrate-parsetree ppx_tools_versioned))
+;; (library
+;;  (name ppx_session)
+;;  (public_name session-ocaml.ppx)
+;;  (kind ppx_rewriter)
+;;  (ppx_runtime_libraries linocaml)
+;;  (preprocess (pps ppx_tools_versioned.metaquot_405))
+;;  (libraries ocaml-migrate-parsetree ppx_tools_versioned))
