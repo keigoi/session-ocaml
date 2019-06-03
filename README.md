@@ -39,10 +39,10 @@ Also, you can uninstall manually by ```ocamlfind remove session-ocaml```.
 
 ## Example
 
-* [A single session 1](examples/ex_single1.ml).
-* [A single session 2](examples/ex_single2.ml).
-* [Multiple sessions 1](examples/ex_multi1.ml).
-* [SMTP protocol](examples/smtp.ml).
+* [A single session 1](examples/example_journal1.ml).
+* [A single session 2](examples/example_journal2.ml).
+* [Multiple sessions 1](examples/example_journal3.ml).
+* [SMTP protocol](examples/smtp2.ml).
 
 # Macro for branching / selection
 
